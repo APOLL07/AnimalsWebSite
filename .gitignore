@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Node
+node_modules/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker/postgres-data/
+
+# Uploaded media
+uploaded_media/
+
+# Alembic
+backend/alembic/versions/__pycache__/
+
+# Logs
+*.log
+
+# Coverage
+htmlcov/
+.coverage
