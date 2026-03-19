@@ -9,18 +9,24 @@
       <div class="entity-list">
         <div v-for="item in items" :key="item.id" class="entity-row">
           <template v-if="editing === item.id">
-            <input
-              v-model="editForm.name"
-              class="form-input"
-              @keydown.enter="saveEdit(item.id)"
-            />
+            <div class="entity-row__edit">
+              <div class="lang-tabs lang-tabs--sm">
+                <button type="button" :class="['lang-tab', { active: editLang === 'uk' }]" @click="editLang = 'uk'">UA</button>
+                <button type="button" :class="['lang-tab', { active: editLang === 'ru' }]" @click="editLang = 'ru'">RU</button>
+              </div>
+              <input
+                v-model="editForm.name[editLang]"
+                class="form-input"
+                @keydown.enter="saveEdit(item.id)"
+              />
+            </div>
             <div class="entity-row__actions">
               <button class="btn btn--sm btn--primary" @click="saveEdit(item.id)">OK</button>
               <button class="btn btn--sm" @click="editing = null">{{ t('common.cancel') }}</button>
             </div>
           </template>
           <template v-else>
-            <span class="entity-row__name">{{ item.name }}</span>
+            <span class="entity-row__name">{{ displayName(item.name) }}</span>
             <span class="entity-row__slug">{{ item.slug }}</span>
             <div class="entity-row__actions">
               <button class="btn btn--sm" @click="startEdit(item)">{{ t('common.edit') }}</button>
@@ -31,22 +37,28 @@
       </div>
 
       <div class="entity-add">
-        <input
-          v-model="newName"
-          class="form-input"
-          :placeholder="t('entityManager.namePlaceholder')"
-          @keydown.enter="onCreate"
-        />
-        <button class="btn btn--primary btn--sm" @click="onCreate" :disabled="!newName.trim()">
-          {{ t('common.add') }}
-        </button>
+        <div class="lang-tabs lang-tabs--sm">
+          <button type="button" :class="['lang-tab', { active: addLang === 'uk' }]" @click="addLang = 'uk'">UA</button>
+          <button type="button" :class="['lang-tab', { active: addLang === 'ru' }]" @click="addLang = 'ru'">RU</button>
+        </div>
+        <div class="entity-add__row">
+          <input
+            v-model="newName[addLang]"
+            class="form-input"
+            :placeholder="t('entityManager.namePlaceholder')"
+            @keydown.enter="onCreate"
+          />
+          <button class="btn btn--primary btn--sm" @click="onCreate" :disabled="!newName.uk.trim() && !newName.ru.trim()">
+            {{ t('common.add') }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { useI18n } from '../i18n/index.js'
 
 const { t } = useI18n()
@@ -58,24 +70,34 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'create', 'update', 'delete'])
 
-const newName = ref('')
+const newName = reactive({ uk: '', ru: '' })
+const addLang = ref('uk')
 const editing = ref(null)
-const editForm = ref({ name: '' })
+const editLang = ref('uk')
+const editForm = ref({ name: { uk: '', ru: '' } })
+
+function displayName(name) {
+  if (typeof name === 'object' && name !== null) return name.uk || name.ru || ''
+  return name || ''
+}
 
 function onCreate() {
-  if (!newName.value.trim()) return
-  emit('create', { name: newName.value.trim() })
-  newName.value = ''
+  if (!newName.uk.trim() && !newName.ru.trim()) return
+  emit('create', { name: { uk: newName.uk.trim(), ru: newName.ru.trim() } })
+  newName.uk = ''
+  newName.ru = ''
 }
 
 function startEdit(item) {
   editing.value = item.id
-  editForm.value = { name: item.name }
+  editLang.value = 'uk'
+  const name = typeof item.name === 'object' ? item.name : { uk: item.name, ru: item.name }
+  editForm.value = { name: { uk: name.uk || '', ru: name.ru || '' } }
 }
 
 function saveEdit(id) {
-  if (!editForm.value.name.trim()) return
-  emit('update', id, { name: editForm.value.name.trim() })
+  if (!editForm.value.name.uk.trim() && !editForm.value.name.ru.trim()) return
+  emit('update', id, { name: editForm.value.name })
   editing.value = null
 }
 
@@ -130,6 +152,34 @@ function onDelete(id) {
 
 .modal__close:hover { background: var(--color-bg-hover); }
 
+.lang-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.lang-tabs--sm { margin-bottom: 0.375rem; }
+
+.lang-tab {
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: white;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.lang-tab:hover { background: var(--color-bg-hover); }
+
+.lang-tab.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
 .entity-list {
   max-height: 320px;
   overflow-y: auto;
@@ -162,7 +212,18 @@ function onDelete(id) {
   flex-shrink: 0;
 }
 
+.entity-row__edit {
+  flex: 1;
+  min-width: 0;
+}
+
 .entity-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.entity-add__row {
   display: flex;
   gap: 0.5rem;
 }

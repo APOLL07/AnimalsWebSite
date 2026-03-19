@@ -234,6 +234,15 @@ watch(() => route.path, () => {
   megaOpen.value = false
 })
 
+// Re-fetch data when locale changes
+watch(locale, async () => {
+  try {
+    const [a, c] = await Promise.all([api.getAnimals(), api.getCategories()])
+    animals.value = a
+    categories.value = c
+  } catch {}
+})
+
 // Mega menu with debounced close to prevent flickering
 function openMega() {
   clearTimeout(megaCloseTimer)

@@ -106,7 +106,7 @@ import { RouterLink } from 'vue-router'
 import { api } from '../api/client'
 import { useI18n } from '../i18n/index.js'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const animals = ref([])
 const products = ref([])
@@ -134,6 +134,14 @@ async function loadProducts() {
 
 watch(selectedAnimal, () => {
   page.value = 1
+  loadProducts()
+})
+
+// Re-fetch when locale changes
+watch(locale, async () => {
+  try {
+    animals.value = await api.getAnimals()
+  } catch {}
   loadProducts()
 })
 

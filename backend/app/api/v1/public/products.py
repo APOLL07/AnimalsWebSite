@@ -1,5 +1,3 @@
-import uuid
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -20,6 +18,7 @@ def list_products(
     page_size: int = Query(20, ge=1, le=100),
     sort_by: str = Query("created_at", pattern="^(name|created_at)$"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
+    lang: str = Query("uk", pattern="^(uk|ru)$"),
     db: Session = Depends(get_db),
 ):
     query = db.query(Product).filter(Product.is_active.is_(True))
@@ -30,7 +29,12 @@ def list_products(
     if category_slug:
         query = query.join(Product.categories).filter(Category.slug == category_slug)
 
-    sort_column = getattr(Product, sort_by)
+    # JSONB-aware sorting
+    if sort_by == "name":
+        sort_column = Product.name[lang].astext
+    else:
+        sort_column = getattr(Product, sort_by)
+
     if sort_order == "desc":
         sort_column = sort_column.desc()
 
@@ -38,7 +42,7 @@ def list_products(
     items = query.order_by(sort_column).offset((page - 1) * page_size).limit(page_size).all()
 
     return PaginatedProducts(
-        items=items,
+        items=[ProductDetail.from_orm_localized(p, lang) for p in items],
         total=total,
         page=page,
         page_size=page_size,
@@ -46,8 +50,12 @@ def list_products(
 
 
 @router.get("/{slug}", response_model=ProductDetail)
-def get_product(slug: str, db: Session = Depends(get_db)):
+def get_product(
+    slug: str,
+    lang: str = Query("uk", pattern="^(uk|ru)$"),
+    db: Session = Depends(get_db),
+):
     product = db.query(Product).filter(Product.slug == slug, Product.is_active.is_(True)).first()
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
-    return product
+    return ProductDetail.from_orm_localized(product, lang)

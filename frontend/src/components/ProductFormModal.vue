@@ -7,9 +7,15 @@
       </div>
 
       <form @submit.prevent="onSubmit" class="product-form">
+        <!-- Language tabs -->
+        <div class="lang-tabs">
+          <button type="button" :class="['lang-tab', { active: editLang === 'uk' }]" @click="editLang = 'uk'">UA</button>
+          <button type="button" :class="['lang-tab', { active: editLang === 'ru' }]" @click="editLang = 'ru'">RU</button>
+        </div>
+
         <div class="form-group">
           <label>{{ t('productForm.name') }}</label>
-          <input v-model="form.name" required class="form-input" />
+          <input v-model="form.name[editLang]" required class="form-input" />
         </div>
 
         <div class="form-group">
@@ -19,7 +25,7 @@
 
         <div class="form-group">
           <label>{{ t('productForm.description') }}</label>
-          <textarea v-model="form.description" rows="4" class="form-input"></textarea>
+          <textarea v-model="form.description[editLang]" rows="4" class="form-input"></textarea>
         </div>
 
         <div class="form-row">
@@ -28,7 +34,7 @@
             <div class="checkbox-group">
               <label v-for="a in animals" :key="a.id" class="checkbox-label">
                 <input type="checkbox" :value="a.id" v-model="form.animal_ids" />
-                {{ a.name }}
+                {{ displayName(a.name) }}
               </label>
             </div>
           </div>
@@ -37,7 +43,7 @@
             <div class="checkbox-group">
               <label v-for="c in categories" :key="c.id" class="checkbox-label">
                 <input type="checkbox" :value="c.id" v-model="form.category_ids" />
-                {{ c.name }}
+                {{ displayName(c.name) }}
               </label>
             </div>
           </div>
@@ -46,8 +52,8 @@
         <div class="form-group">
           <label>{{ t('productForm.attributes') }}</label>
           <div v-for="(attr, idx) in form.attributes" :key="idx" class="attr-row">
-            <input v-model="attr.key" :placeholder="t('productForm.attrKeyPlaceholder')" class="form-input attr-input" />
-            <input v-model="attr.value" :placeholder="t('productForm.attrValuePlaceholder')" class="form-input attr-input" />
+            <input v-model="attr.key[editLang]" :placeholder="t('productForm.attrKeyPlaceholder')" class="form-input attr-input" />
+            <input v-model="attr.value[editLang]" :placeholder="t('productForm.attrValuePlaceholder')" class="form-input attr-input" />
             <label class="checkbox-label checkbox-label--inline">
               <input type="checkbox" v-model="attr.is_main" /> {{ t('productForm.attrMain') }}
             </label>
@@ -128,17 +134,28 @@ const notify = useNotifications()
 const isEdit = computed(() => !!props.product)
 const submitting = ref(false)
 const error = ref('')
+const editLang = ref('uk')
+
+function toDict(val) {
+  if (typeof val === 'object' && val !== null) return { uk: val.uk || '', ru: val.ru || '' }
+  return { uk: val || '', ru: val || '' }
+}
+
+function displayName(name) {
+  if (typeof name === 'object' && name !== null) return name.uk || name.ru || ''
+  return name || ''
+}
 
 const form = reactive({
-  name: props.product?.name || '',
+  name: toDict(props.product?.name),
   brand: props.product?.brand || '',
-  description: props.product?.description || '',
+  description: toDict(props.product?.description),
   is_active: props.product?.is_active ?? true,
   animal_ids: props.product?.animals?.map((a) => a.id) || [],
   category_ids: props.product?.categories?.map((c) => c.id) || [],
   attributes: props.product?.attributes?.map((a) => ({
-    key: a.key,
-    value: a.value,
+    key: toDict(a.key),
+    value: toDict(a.value),
     is_main: a.is_main,
   })) || [],
 })
@@ -152,7 +169,7 @@ const pendingVideos = ref([])
 const videoPreviews = ref([])
 
 function addAttribute() {
-  form.attributes.push({ key: '', value: '', is_main: false })
+  form.attributes.push({ key: { uk: '', ru: '' }, value: { uk: '', ru: '' }, is_main: false })
 }
 
 function onFilesSelected(e) {
@@ -184,7 +201,7 @@ function removeVideo(idx) {
 }
 
 async function onSubmit() {
-  if (!form.name.trim()) return
+  if (!form.name.uk.trim() && !form.name.ru.trim()) return
   error.value = ''
   submitting.value = true
 
@@ -195,7 +212,7 @@ async function onSubmit() {
     is_active: form.is_active,
     animal_ids: form.animal_ids,
     category_ids: form.category_ids,
-    attributes: form.attributes.filter((a) => a.key && a.value),
+    attributes: form.attributes.filter((a) => (a.key.uk || a.key.ru) && (a.value.uk || a.value.ru)),
   }
 
   try {
@@ -296,6 +313,32 @@ async function onSubmit() {
 }
 
 .modal__close:hover { background: var(--color-bg-hover); }
+
+.lang-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.lang-tab {
+  padding: 0.375rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: white;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.lang-tab:hover { background: var(--color-bg-hover); }
+
+.lang-tab.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
 
 .form-row {
   display: grid;

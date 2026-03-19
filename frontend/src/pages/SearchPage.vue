@@ -94,7 +94,7 @@ import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { api } from '../api/client'
 import { useI18n } from '../i18n/index.js'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -168,6 +168,11 @@ watch(
     fetchResults()
   }
 )
+
+// Re-search when locale changes
+watch(locale, () => {
+  if (searched.value) fetchResults()
+})
 
 onMounted(() => {
   if (route.query.q) {

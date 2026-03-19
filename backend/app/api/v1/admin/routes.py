@@ -14,32 +14,49 @@ from app.models.category import Category
 from app.models.product import Product, ProductAttribute, ProductImage
 from app.schemas.admin import (
     AnimalCreate,
+    AnimalOutAdmin,
     AnimalUpdate,
     CategoryCreate,
+    CategoryTreeAdmin,
     CategoryUpdate,
     ImageReorder,
     ProductCreate,
+    ProductDetailAdmin,
     ProductUpdate,
 )
-from app.schemas.animal import AnimalOut
-from app.schemas.category import CategoryTree
-from app.schemas.product import ProductDetail
 from app.security.dependencies import get_current_admin
 from app.services.images import delete_image_files, delete_video_file, save_upload, save_video_upload
 from app.services.slug import generate_slug
 
 
-def _make_slug(name: str) -> str:
+def _make_slug(name) -> str:
     """Simple slug from name (transliterate Russian)."""
     from app.services.slug import _transliterate
 
+    if isinstance(name, dict):
+        name = name.get("ru") or name.get("uk") or ""
     base = _transliterate(name)
     return re.sub(r"[^a-z0-9]+", "-", base).strip("-")
 
 router = APIRouter()
 
 
-@router.post("/products", response_model=ProductDetail, status_code=status.HTTP_201_CREATED)
+# ── Product CRUD ─────────────────────────────────────────────
+
+
+@router.get("/products/{product_id}", response_model=ProductDetailAdmin)
+async def get_product_admin(
+    product_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_current_admin),
+):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    return product
+
+
+@router.post("/products", response_model=ProductDetailAdmin, status_code=status.HTTP_201_CREATED)
 async def create_product(
     body: ProductCreate,
     db: Session = Depends(get_db),
@@ -74,7 +91,7 @@ async def create_product(
     return product
 
 
-@router.patch("/products/{product_id}", response_model=ProductDetail)
+@router.patch("/products/{product_id}", response_model=ProductDetailAdmin)
 async def update_product(
     product_id: uuid.UUID,
     body: ProductUpdate,
@@ -133,7 +150,7 @@ async def delete_product(
     db.commit()
 
 
-@router.post("/products/{product_id}/images", response_model=ProductDetail)
+@router.post("/products/{product_id}/images", response_model=ProductDetailAdmin)
 async def upload_image(
     product_id: uuid.UUID,
     file: UploadFile,
@@ -164,7 +181,7 @@ async def upload_image(
     return product
 
 
-@router.post("/products/{product_id}/videos", response_model=ProductDetail)
+@router.post("/products/{product_id}/videos", response_model=ProductDetailAdmin)
 async def upload_video(
     product_id: uuid.UUID,
     file: UploadFile,
@@ -210,7 +227,7 @@ async def delete_image(
     db.commit()
 
 
-@router.put("/products/{product_id}/images/reorder", response_model=ProductDetail)
+@router.put("/products/{product_id}/images/reorder", response_model=ProductDetailAdmin)
 async def reorder_images(
     product_id: uuid.UUID,
     body: ImageReorder,
@@ -235,7 +252,15 @@ async def reorder_images(
 # ── Animal CRUD ──────────────────────────────────────────────
 
 
-@router.post("/animals", response_model=AnimalOut, status_code=status.HTTP_201_CREATED)
+@router.get("/animals", response_model=list[AnimalOutAdmin])
+async def list_animals_admin(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_current_admin),
+):
+    return db.query(Animal).order_by(Animal.slug).all()
+
+
+@router.post("/animals", response_model=AnimalOutAdmin, status_code=status.HTTP_201_CREATED)
 async def create_animal(
     body: AnimalCreate,
     db: Session = Depends(get_db),
@@ -251,7 +276,7 @@ async def create_animal(
     return animal
 
 
-@router.patch("/animals/{animal_id}", response_model=AnimalOut)
+@router.patch("/animals/{animal_id}", response_model=AnimalOutAdmin)
 async def update_animal(
     animal_id: uuid.UUID,
     body: AnimalUpdate,
@@ -288,7 +313,16 @@ async def delete_animal(
 # ── Category CRUD ────────────────────────────────────────────
 
 
-@router.post("/categories", response_model=CategoryTree, status_code=status.HTTP_201_CREATED)
+@router.get("/categories", response_model=list[CategoryTreeAdmin])
+async def list_categories_admin(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_current_admin),
+):
+    cats = db.query(Category).filter(Category.parent_id.is_(None)).order_by(Category.slug).all()
+    return cats
+
+
+@router.post("/categories", response_model=CategoryTreeAdmin, status_code=status.HTTP_201_CREATED)
 async def create_category(
     body: CategoryCreate,
     db: Session = Depends(get_db),
@@ -308,7 +342,7 @@ async def create_category(
     return cat
 
 
-@router.patch("/categories/{category_id}", response_model=CategoryTree)
+@router.patch("/categories/{category_id}", response_model=CategoryTreeAdmin)
 async def update_category(
     category_id: uuid.UUID,
     body: CategoryUpdate,

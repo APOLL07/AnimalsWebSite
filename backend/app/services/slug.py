@@ -23,7 +23,9 @@ def _transliterate(text: str) -> str:
     return "".join(result)
 
 
-def generate_slug(name: str, db: Session) -> str:
+def generate_slug(name: str | dict, db: Session) -> str:
+    if isinstance(name, dict):
+        name = name.get("ru") or name.get("uk") or "product"
     base = _transliterate(name)
     base = re.sub(r"[^a-z0-9]+", "-", base).strip("-")
     if not base:

@@ -21,3 +21,7 @@ export function useI18n() {
 
   return { t, locale, setLocale }
 }
+
+export function getCurrentLocale() {
+  return current.value
+}

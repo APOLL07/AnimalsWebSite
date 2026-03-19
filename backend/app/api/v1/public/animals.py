@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -9,5 +9,11 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[AnimalOut])
-def list_animals(db: Session = Depends(get_db)):
-    return db.query(Animal).order_by(Animal.name).all()
+def list_animals(
+    lang: str = Query("uk", pattern="^(uk|ru)$"),
+    db: Session = Depends(get_db),
+):
+    animals = db.query(Animal).all()
+    result = [AnimalOut.from_orm_localized(a, lang) for a in animals]
+    result.sort(key=lambda a: a.name)
+    return result

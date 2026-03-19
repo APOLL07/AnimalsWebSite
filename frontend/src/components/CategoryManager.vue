@@ -10,14 +10,20 @@
         <template v-for="cat in categories" :key="cat.id">
           <div class="entity-row entity-row--parent">
             <template v-if="editing === cat.id">
-              <input v-model="editForm.name" class="form-input" @keydown.enter="saveEdit(cat.id)" />
+              <div class="entity-row__edit">
+                <div class="lang-tabs lang-tabs--sm">
+                  <button type="button" :class="['lang-tab', { active: editLang === 'uk' }]" @click="editLang = 'uk'">UA</button>
+                  <button type="button" :class="['lang-tab', { active: editLang === 'ru' }]" @click="editLang = 'ru'">RU</button>
+                </div>
+                <input v-model="editForm.name[editLang]" class="form-input" @keydown.enter="saveEdit(cat.id)" />
+              </div>
               <div class="entity-row__actions">
                 <button class="btn btn--sm btn--primary" @click="saveEdit(cat.id)">OK</button>
                 <button class="btn btn--sm" @click="editing = null">{{ t('common.cancel') }}</button>
               </div>
             </template>
             <template v-else>
-              <span class="entity-row__name entity-row__name--parent">{{ cat.name }}</span>
+              <span class="entity-row__name entity-row__name--parent">{{ displayName(cat.name) }}</span>
               <div class="entity-row__actions">
                 <button class="btn btn--sm" @click="startEdit(cat)">{{ t('common.edit') }}</button>
                 <button class="btn btn--sm btn--danger" @click="doDelete(cat.id)">{{ t('common.delete') }}</button>
@@ -27,14 +33,20 @@
 
           <div v-for="child in cat.children" :key="child.id" class="entity-row entity-row--child">
             <template v-if="editing === child.id">
-              <input v-model="editForm.name" class="form-input" @keydown.enter="saveEdit(child.id)" />
+              <div class="entity-row__edit">
+                <div class="lang-tabs lang-tabs--sm">
+                  <button type="button" :class="['lang-tab', { active: editLang === 'uk' }]" @click="editLang = 'uk'">UA</button>
+                  <button type="button" :class="['lang-tab', { active: editLang === 'ru' }]" @click="editLang = 'ru'">RU</button>
+                </div>
+                <input v-model="editForm.name[editLang]" class="form-input" @keydown.enter="saveEdit(child.id)" />
+              </div>
               <div class="entity-row__actions">
                 <button class="btn btn--sm btn--primary" @click="saveEdit(child.id)">OK</button>
                 <button class="btn btn--sm" @click="editing = null">{{ t('common.cancel') }}</button>
               </div>
             </template>
             <template v-else>
-              <span class="entity-row__name">{{ child.name }}</span>
+              <span class="entity-row__name">{{ displayName(child.name) }}</span>
               <div class="entity-row__actions">
                 <button class="btn btn--sm" @click="startEdit(child)">{{ t('common.edit') }}</button>
                 <button class="btn btn--sm btn--danger" @click="doDelete(child.id)">{{ t('common.delete') }}</button>
@@ -44,34 +56,46 @@
 
           <!-- Add subcategory inline -->
           <div class="entity-row entity-row--child entity-row--add">
-            <input
-              v-model="newChildName[cat.id]"
-              class="form-input form-input--sm"
-              :placeholder="t('categoryManager.newSubcategory')"
-              @keydown.enter="createChild(cat.id)"
-            />
-            <button class="btn btn--sm" @click="createChild(cat.id)" :disabled="!newChildName[cat.id]?.trim()">+</button>
+            <div class="entity-row__edit">
+              <div class="lang-tabs lang-tabs--sm">
+                <button type="button" :class="['lang-tab', { active: childLang[cat.id] !== 'ru' }]" @click="childLang[cat.id] = 'uk'">UA</button>
+                <button type="button" :class="['lang-tab', { active: childLang[cat.id] === 'ru' }]" @click="childLang[cat.id] = 'ru'">RU</button>
+              </div>
+              <input
+                v-model="newChildName[cat.id][childLang[cat.id] || 'uk']"
+                class="form-input form-input--sm"
+                :placeholder="t('categoryManager.newSubcategory')"
+                @keydown.enter="createChild(cat.id)"
+              />
+            </div>
+            <button class="btn btn--sm" @click="createChild(cat.id)" :disabled="!newChildName[cat.id]?.uk?.trim() && !newChildName[cat.id]?.ru?.trim()">+</button>
           </div>
         </template>
       </div>
 
       <div class="entity-add">
-        <input
-          v-model="newRootName"
-          class="form-input"
-          :placeholder="t('categoryManager.newRoot')"
-          @keydown.enter="createRoot"
-        />
-        <button class="btn btn--primary btn--sm" @click="createRoot" :disabled="!newRootName.trim()">
-          {{ t('common.add') }}
-        </button>
+        <div class="lang-tabs lang-tabs--sm">
+          <button type="button" :class="['lang-tab', { active: addLang === 'uk' }]" @click="addLang = 'uk'">UA</button>
+          <button type="button" :class="['lang-tab', { active: addLang === 'ru' }]" @click="addLang = 'ru'">RU</button>
+        </div>
+        <div class="entity-add__row">
+          <input
+            v-model="newRootName[addLang]"
+            class="form-input"
+            :placeholder="t('categoryManager.newRoot')"
+            @keydown.enter="createRoot"
+          />
+          <button class="btn btn--primary btn--sm" @click="createRoot" :disabled="!newRootName.uk.trim() && !newRootName.ru.trim()">
+            {{ t('common.add') }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { api } from '../api/client'
 import { useNotifications } from '../stores/notifications'
 import { useI18n } from '../i18n/index.js'
@@ -85,20 +109,40 @@ const props = defineProps({
 const emit = defineEmits(['close', 'refresh'])
 const notify = useNotifications()
 
-const newRootName = ref('')
+const newRootName = reactive({ uk: '', ru: '' })
+const addLang = ref('uk')
 const newChildName = reactive({})
+const childLang = reactive({})
 const editing = ref(null)
-const editForm = ref({ name: '' })
+const editLang = ref('uk')
+const editForm = ref({ name: { uk: '', ru: '' } })
+
+// Initialize child name dicts for each category
+function initChildNames() {
+  for (const cat of props.categories) {
+    if (!newChildName[cat.id]) newChildName[cat.id] = { uk: '', ru: '' }
+    if (!childLang[cat.id]) childLang[cat.id] = 'uk'
+  }
+}
+initChildNames()
+watch(() => props.categories, initChildNames)
+
+function displayName(name) {
+  if (typeof name === 'object' && name !== null) return name.uk || name.ru || ''
+  return name || ''
+}
 
 function startEdit(item) {
   editing.value = item.id
-  editForm.value = { name: item.name }
+  editLang.value = 'uk'
+  const name = typeof item.name === 'object' ? item.name : { uk: item.name, ru: item.name }
+  editForm.value = { name: { uk: name.uk || '', ru: name.ru || '' } }
 }
 
 async function saveEdit(id) {
-  if (!editForm.value.name.trim()) return
+  if (!editForm.value.name.uk.trim() && !editForm.value.name.ru.trim()) return
   try {
-    await api.updateCategory(id, { name: editForm.value.name.trim() })
+    await api.updateCategory(id, { name: editForm.value.name })
     notify.success(t('notify.categoryUpdated'))
     editing.value = null
     emit('refresh')
@@ -118,11 +162,12 @@ async function doDelete(id) {
 }
 
 async function createRoot() {
-  if (!newRootName.value.trim()) return
+  if (!newRootName.uk.trim() && !newRootName.ru.trim()) return
   try {
-    await api.createCategory({ name: newRootName.value.trim() })
+    await api.createCategory({ name: { uk: newRootName.uk.trim(), ru: newRootName.ru.trim() } })
     notify.success(t('notify.categoryCreated'))
-    newRootName.value = ''
+    newRootName.uk = ''
+    newRootName.ru = ''
     emit('refresh')
   } catch (e) {
     notify.error(e.message)
@@ -130,12 +175,12 @@ async function createRoot() {
 }
 
 async function createChild(parentId) {
-  const name = newChildName[parentId]?.trim()
-  if (!name) return
+  const names = newChildName[parentId]
+  if (!names?.uk?.trim() && !names?.ru?.trim()) return
   try {
-    await api.createCategory({ name, parent_id: parentId })
+    await api.createCategory({ name: { uk: (names.uk || '').trim(), ru: (names.ru || '').trim() }, parent_id: parentId })
     notify.success(t('notify.subcategoryCreated'))
-    newChildName[parentId] = ''
+    newChildName[parentId] = { uk: '', ru: '' }
     emit('refresh')
   } catch (e) {
     notify.error(e.message)
@@ -189,6 +234,39 @@ async function createChild(parentId) {
 
 .modal__close:hover { background: var(--color-bg-hover); }
 
+.lang-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.lang-tabs--sm { margin-bottom: 0.375rem; }
+
+.lang-tab {
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: white;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.lang-tab:hover { background: var(--color-bg-hover); }
+
+.lang-tab.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.entity-row__edit {
+  flex: 1;
+  min-width: 0;
+}
+
 .entity-list {
   max-height: 400px;
   overflow-y: auto;
@@ -237,6 +315,12 @@ async function createChild(parentId) {
 }
 
 .entity-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.entity-add__row {
   display: flex;
   gap: 0.5rem;
 }

@@ -1,7 +1,12 @@
+import { getCurrentLocale } from '../i18n/index.js'
+
 const BASE_URL = '/api/v1'
 
 async function request(path, options = {}) {
-  const url = `${BASE_URL}${path}`
+  // Auto-append lang parameter for localization
+  const separator = path.includes('?') ? '&' : '?'
+  const lang = getCurrentLocale()
+  const url = `${BASE_URL}${path}${separator}lang=${lang}`
   const config = { credentials: 'include', ...options }
 
   if (config.body && !(config.body instanceof FormData)) {
@@ -55,6 +60,7 @@ export const api = {
   me: () => request('/auth/me'),
 
   // Admin - Products
+  getProductAdmin: (id) => request(`/admin/products/${id}`),
   createProduct: (data) =>
     request('/admin/products', { method: 'POST', body: data }),
   updateProduct: (id, data) =>
@@ -86,6 +92,7 @@ export const api = {
     }),
 
   // Admin - Animals
+  getAnimalsAdmin: () => request('/admin/animals'),
   createAnimal: (data) =>
     request('/admin/animals', { method: 'POST', body: data }),
   updateAnimal: (id, data) =>
@@ -94,6 +101,7 @@ export const api = {
     request(`/admin/animals/${id}`, { method: 'DELETE' }),
 
   // Admin - Categories
+  getCategoriesAdmin: () => request('/admin/categories'),
   createCategory: (data) =>
     request('/admin/categories', { method: 'POST', body: data }),
   updateCategory: (id, data) =>

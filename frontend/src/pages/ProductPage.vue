@@ -107,7 +107,7 @@
 
           <!-- Admin actions -->
           <div v-if="auth.isLoggedIn" class="product-info__admin">
-            <button class="btn btn--sm" @click="showEditForm = true">{{ t('product.edit') }}</button>
+            <button class="btn btn--sm" @click="openEditForm">{{ t('product.edit') }}</button>
             <button class="btn btn--sm btn--danger" @click="showDeleteConfirm = true">{{ t('product.delete') }}</button>
           </div>
 
@@ -167,11 +167,11 @@
 
     <!-- Edit form modal -->
     <ProductFormModal
-      v-if="showEditForm && product"
-      :product="product"
+      v-if="showEditForm && editingProduct"
+      :product="editingProduct"
       :animals="allAnimals"
       :categories="allCategories"
-      @close="showEditForm = false"
+      @close="showEditForm = false; editingProduct = null"
       @saved="onSaved"
     />
 
@@ -198,7 +198,7 @@ import { useNotifications } from '../stores/notifications'
 import { useI18n } from '../i18n/index.js'
 import ProductFormModal from '../components/ProductFormModal.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
@@ -209,6 +209,7 @@ const loading = ref(true)
 const activeImage = ref(null)
 const showEditForm = ref(false)
 const showDeleteConfirm = ref(false)
+const editingProduct = ref(null)
 const allAnimals = ref([])
 const allCategories = ref([])
 
@@ -298,12 +299,25 @@ async function onDelete() {
   }
 }
 
+async function openEditForm() {
+  try {
+    editingProduct.value = await api.getProductAdmin(product.value.id)
+    showEditForm.value = true
+  } catch {
+    notify.error(t('notify.loadError'))
+  }
+}
+
 function onSaved() {
   showEditForm.value = false
+  editingProduct.value = null
   loadProduct()
 }
 
 watch(() => route.params.slug, loadProduct)
+
+// Re-fetch when locale changes
+watch(locale, () => loadProduct())
 
 onMounted(async () => {
   loadProduct()

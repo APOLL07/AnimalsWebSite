@@ -55,10 +55,20 @@
           </ul>
         </div>
 
+        <div class="filter-group">
+          <h3 class="filter-group__title">{{ t('catalog.sorting') }}</h3>
+          <select v-model="sortValue" @change="loadProducts" class="sort-select" :aria-label="t('catalog.sorting')">
+            <option value="created_at:desc">{{ t('catalog.sortNewest') }}</option>
+            <option value="created_at:asc">{{ t('catalog.sortOldest') }}</option>
+            <option value="name:asc">{{ t('catalog.sortNameAsc') }}</option>
+            <option value="name:desc">{{ t('catalog.sortNameDesc') }}</option>
+          </select>
+        </div>
+
         <!-- Admin: Manage animals/categories -->
         <div v-if="auth.isLoggedIn" class="sidebar__admin">
-          <button class="btn btn--sm" @click="showAnimalManager = true">{{ t('catalog.manageAnimals') }}</button>
-          <button class="btn btn--sm" @click="showCategoryManager = true">{{ t('catalog.manageCategories') }}</button>
+          <button class="btn btn--sm" @click="openAnimalManager">{{ t('catalog.manageAnimals') }}</button>
+          <button class="btn btn--sm" @click="openCategoryManager">{{ t('catalog.manageCategories') }}</button>
         </div>
       </aside>
 
@@ -69,14 +79,6 @@
       <div class="catalog__main">
         <div class="catalog__header">
           <h1 class="catalog__title">{{ pageTitle }}</h1>
-          <div class="catalog__sort">
-            <select v-model="sortValue" @change="loadProducts" class="sort-select" :aria-label="t('catalog.sorting')">
-              <option value="created_at:desc">{{ t('catalog.sortNewest') }}</option>
-              <option value="created_at:asc">{{ t('catalog.sortOldest') }}</option>
-              <option value="name:asc">{{ t('catalog.sortNameAsc') }}</option>
-              <option value="name:desc">{{ t('catalog.sortNameDesc') }}</option>
-            </select>
-          </div>
         </div>
 
         <!-- Admin: add product button -->
@@ -179,9 +181,7 @@
     <EntityManager
       v-if="showAnimalManager"
       :title="t('catalog.manageAnimals')"
-      :items="animals"
-      :fields="['name']"
-      :placeholders="{ name: t('entityManager.namePlaceholder') }"
+      :items="adminAnimals"
       @close="showAnimalManager = false"
       @create="onCreateAnimal"
       @update="onUpdateAnimal"
@@ -191,7 +191,7 @@
     <!-- Category Manager Modal -->
     <CategoryManager
       v-if="showCategoryManager"
-      :categories="categories"
+      :categories="adminCategories"
       @close="showCategoryManager = false"
       @refresh="refreshMeta"
     />
@@ -209,7 +209,7 @@ import ProductFormModal from '../components/ProductFormModal.vue'
 import EntityManager from '../components/EntityManager.vue'
 import CategoryManager from '../components/CategoryManager.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
@@ -231,6 +231,8 @@ const editingProduct = ref(null)
 const deletingProduct = ref(null)
 const showAnimalManager = ref(false)
 const showCategoryManager = ref(false)
+const adminAnimals = ref([])
+const adminCategories = ref([])
 
 const selectedAnimal = computed(() => route.params.animalSlug || '')
 const selectedCategory = computed(() => route.query.category || '')
@@ -282,9 +284,14 @@ function goToPage(page) {
   router.push({ path: route.path, query: { ...route.query, page: String(page) } })
 }
 
-function editProduct(product) {
-  editingProduct.value = product
-  showProductForm.value = true
+async function editProduct(product) {
+  try {
+    const adminProduct = await api.getProductAdmin(product.id)
+    editingProduct.value = adminProduct
+    showProductForm.value = true
+  } catch {
+    notify.error(t('notify.loadError'))
+  }
 }
 
 function confirmDelete(product) {
@@ -308,22 +315,40 @@ function onProductSaved() {
   loadProducts()
 }
 
+// Admin modals
+async function openAnimalManager() {
+  try {
+    adminAnimals.value = await api.getAnimalsAdmin()
+  } catch {}
+  showAnimalManager.value = true
+}
+
+async function openCategoryManager() {
+  try {
+    adminCategories.value = await api.getCategoriesAdmin()
+  } catch {}
+  showCategoryManager.value = true
+}
+
 // Animal management
 async function onCreateAnimal(data) {
   await api.createAnimal(data)
   notify.success(t('notify.animalAdded'))
+  adminAnimals.value = await api.getAnimalsAdmin()
   refreshMeta()
 }
 
 async function onUpdateAnimal(id, data) {
   await api.updateAnimal(id, data)
   notify.success(t('notify.animalUpdated'))
+  adminAnimals.value = await api.getAnimalsAdmin()
   refreshMeta()
 }
 
 async function onDeleteAnimal(id) {
   await api.deleteAnimal(id)
   notify.success(t('notify.animalDeleted'))
+  adminAnimals.value = await api.getAnimalsAdmin()
   refreshMeta()
 }
 
@@ -338,6 +363,10 @@ async function refreshMeta() {
     { id: c.id, slug: c.slug, name: c.name },
     ...(c.children || []).map((ch) => ({ id: ch.id, slug: ch.slug, name: `— ${ch.name}` })),
   ])
+  // Refresh admin data if modals are open
+  if (showCategoryManager.value) {
+    adminCategories.value = await api.getCategoriesAdmin()
+  }
 }
 
 watch(
@@ -347,6 +376,12 @@ watch(
     loadProducts()
   }
 )
+
+// Re-fetch everything when locale changes
+watch(locale, async () => {
+  await refreshMeta()
+  loadProducts()
+})
 
 onMounted(async () => {
   await refreshMeta()
@@ -517,20 +552,10 @@ onMounted(async () => {
 .catalog__main { flex: 1; min-width: 0; }
 
 .catalog__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
 }
 
 .catalog__title { font-size: 1.5rem; }
-
-.catalog__sort {
-  flex-shrink: 1;
-  min-width: 0;
-}
 
 .sort-select {
   padding: 0.5rem 0.75rem;
@@ -540,29 +565,14 @@ onMounted(async () => {
   background: white;
   font-family: inherit;
   width: 100%;
-  max-width: 220px;
-  min-width: 0;
   box-sizing: border-box;
-}
-
-@media (max-width: 475px) {
-  .catalog__header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .catalog__sort {
-    width: 100%;
-  }
-  .sort-select {
-    max-width: 100%;
-  }
 }
 
 .catalog__add-btn { margin-bottom: 1rem; }
 
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1.5rem;
 }
 
@@ -628,6 +638,16 @@ onMounted(async () => {
   border-top: 1px solid var(--color-border);
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 403px) {
+  .product-card__admin {
+    flex-direction: column;
+  }
+  .product-card__admin .btn {
+    width: 100%;
+  }
 }
 
 .product-card--skeleton { pointer-events: none; }

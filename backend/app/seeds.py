@@ -17,53 +17,53 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 ANIMALS = [
-    {"slug": "dogs", "name": "Собаки"},
-    {"slug": "cats", "name": "Кошки"},
-    {"slug": "rodents", "name": "Грызуны"},
-    {"slug": "birds", "name": "Птицы"},
-    {"slug": "fish", "name": "Рыбки"},
-    {"slug": "reptiles", "name": "Рептилии"},
+    {"slug": "dogs", "name": {"uk": "Собаки", "ru": "Собаки"}},
+    {"slug": "cats", "name": {"uk": "Коти", "ru": "Кошки"}},
+    {"slug": "rodents", "name": {"uk": "Гризуни", "ru": "Грызуны"}},
+    {"slug": "birds", "name": {"uk": "Птахи", "ru": "Птицы"}},
+    {"slug": "fish", "name": {"uk": "Рибки", "ru": "Рыбки"}},
+    {"slug": "reptiles", "name": {"uk": "Рептилії", "ru": "Рептилии"}},
 ]
 
 CATEGORIES = [
     {
         "slug": "food",
-        "name": "Корма",
+        "name": {"uk": "Корми", "ru": "Корма"},
         "children": [
-            {"slug": "dry-food", "name": "Сухой корм"},
-            {"slug": "wet-food", "name": "Влажный корм"},
-            {"slug": "treats", "name": "Лакомства"},
+            {"slug": "dry-food", "name": {"uk": "Сухий корм", "ru": "Сухой корм"}},
+            {"slug": "wet-food", "name": {"uk": "Вологий корм", "ru": "Влажный корм"}},
+            {"slug": "treats", "name": {"uk": "Ласощі", "ru": "Лакомства"}},
         ],
     },
     {
         "slug": "accessories",
-        "name": "Амуниция",
+        "name": {"uk": "Амуніція", "ru": "Амуниция"},
         "children": [
-            {"slug": "collars", "name": "Ошейники"},
-            {"slug": "leashes", "name": "Поводки"},
-            {"slug": "bowls", "name": "Миски"},
+            {"slug": "collars", "name": {"uk": "Нашийники", "ru": "Ошейники"}},
+            {"slug": "leashes", "name": {"uk": "Повідки", "ru": "Поводки"}},
+            {"slug": "bowls", "name": {"uk": "Миски", "ru": "Миски"}},
         ],
     },
     {
         "slug": "toys",
-        "name": "Игрушки",
+        "name": {"uk": "Іграшки", "ru": "Игрушки"},
         "children": [],
     },
     {
         "slug": "health",
-        "name": "Здоровье",
+        "name": {"uk": "Здоров'я", "ru": "Здоровье"},
         "children": [
-            {"slug": "vitamins", "name": "Витамины"},
-            {"slug": "grooming", "name": "Груминг"},
+            {"slug": "vitamins", "name": {"uk": "Вітаміни", "ru": "Витамины"}},
+            {"slug": "grooming", "name": {"uk": "Грумінг", "ru": "Груминг"}},
         ],
     },
     {
         "slug": "housing",
-        "name": "Жильё",
+        "name": {"uk": "Житло", "ru": "Жильё"},
         "children": [
-            {"slug": "beds", "name": "Лежанки"},
-            {"slug": "cages", "name": "Клетки"},
-            {"slug": "aquariums", "name": "Аквариумы"},
+            {"slug": "beds", "name": {"uk": "Лежанки", "ru": "Лежанки"}},
+            {"slug": "cages", "name": {"uk": "Клітки", "ru": "Клетки"}},
+            {"slug": "aquariums", "name": {"uk": "Акваріуми", "ru": "Аквариумы"}},
         ],
     },
 ]
@@ -74,6 +74,8 @@ def seed_animals(db: Session) -> None:
         existing = db.query(Animal).filter(Animal.slug == data["slug"]).first()
         if not existing:
             db.add(Animal(id=uuid.uuid4(), **data))
+        else:
+            existing.name = data["name"]
     db.commit()
     print(f"  Animals: {db.query(Animal).count()} records")
 
@@ -90,6 +92,8 @@ def seed_categories(db: Session) -> None:
             )
             db.add(parent)
             db.flush()
+        else:
+            parent.name = cat_data["name"]
 
         for child_data in cat_data.get("children", []):
             existing = db.query(Category).filter(Category.slug == child_data["slug"]).first()
@@ -102,6 +106,8 @@ def seed_categories(db: Session) -> None:
                         parent_id=parent.id,
                     )
                 )
+            else:
+                existing.name = child_data["name"]
     db.commit()
     print(f"  Categories: {db.query(Category).count()} records")
 
@@ -125,149 +131,185 @@ def seed_admin(db: Session) -> None:
 PRODUCTS = [
     {
         "slug": "royal-canin-maxi-adult",
-        "name": "Royal Canin Maxi Adult",
+        "name": {"uk": "Royal Canin Maxi Adult", "ru": "Royal Canin Maxi Adult"},
         "brand": "Royal Canin",
-        "description": "Сухой корм для крупных собак от 15 месяцев до 5 лет. Поддерживает здоровье суставов и оптимальный вес.",
+        "description": {
+            "uk": "Сухий корм для великих собак від 15 місяців до 5 років. Підтримує здоров'я суглобів та оптимальну вагу.",
+            "ru": "Сухой корм для крупных собак от 15 месяцев до 5 лет. Поддерживает здоровье суставов и оптимальный вес.",
+        },
         "animals": ["dogs"],
         "categories": ["food", "dry-food"],
         "attributes": [
-            {"key": "Вес", "value": "15 кг", "is_main": True},
-            {"key": "Возраст", "value": "от 15 месяцев", "is_main": True},
-            {"key": "Страна", "value": "Франция", "is_main": False},
+            {"key": {"uk": "Вага", "ru": "Вес"}, "value": {"uk": "15 кг", "ru": "15 кг"}, "is_main": True},
+            {"key": {"uk": "Вік", "ru": "Возраст"}, "value": {"uk": "від 15 місяців", "ru": "от 15 месяцев"}, "is_main": True},
+            {"key": {"uk": "Країна", "ru": "Страна"}, "value": {"uk": "Франція", "ru": "Франция"}, "is_main": False},
         ],
     },
     {
         "slug": "whiskas-tuna-pouch",
-        "name": "Whiskas с тунцом в желе",
+        "name": {"uk": "Whiskas з тунцем у желе", "ru": "Whiskas с тунцом в желе"},
         "brand": "Whiskas",
-        "description": "Влажный корм для взрослых кошек с нежным тунцом в аппетитном желе. Полнорационный.",
+        "description": {
+            "uk": "Вологий корм для дорослих котів з ніжним тунцем в апетитному желе. Повнораціонний.",
+            "ru": "Влажный корм для взрослых кошек с нежным тунцом в аппетитном желе. Полнорационный.",
+        },
         "animals": ["cats"],
         "categories": ["food", "wet-food"],
         "attributes": [
-            {"key": "Вес", "value": "85 г", "is_main": True},
-            {"key": "Вкус", "value": "Тунец", "is_main": True},
+            {"key": {"uk": "Вага", "ru": "Вес"}, "value": {"uk": "85 г", "ru": "85 г"}, "is_main": True},
+            {"key": {"uk": "Смак", "ru": "Вкус"}, "value": {"uk": "Тунець", "ru": "Тунец"}, "is_main": True},
         ],
     },
     {
         "slug": "ferplast-collar-ergocomfort",
-        "name": "Ferplast Ergocomfort ошейник",
+        "name": {"uk": "Ferplast Ergocomfort нашийник", "ru": "Ferplast Ergocomfort ошейник"},
         "brand": "Ferplast",
-        "description": "Эргономичный ошейник с мягкой подкладкой. Регулируемый размер, надёжная застёжка.",
+        "description": {
+            "uk": "Ергономічний нашийник з м'якою підкладкою. Регульований розмір, надійна застібка.",
+            "ru": "Эргономичный ошейник с мягкой подкладкой. Регулируемый размер, надёжная застёжка.",
+        },
         "animals": ["dogs"],
         "categories": ["accessories", "collars"],
         "attributes": [
-            {"key": "Размер", "value": "M (34-42 см)", "is_main": True},
-            {"key": "Цвет", "value": "Синий", "is_main": True},
-            {"key": "Материал", "value": "Нейлон", "is_main": False},
+            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "M (34-42 см)", "ru": "M (34-42 см)"}, "is_main": True},
+            {"key": {"uk": "Колір", "ru": "Цвет"}, "value": {"uk": "Синій", "ru": "Синий"}, "is_main": True},
+            {"key": {"uk": "Матеріал", "ru": "Материал"}, "value": {"uk": "Нейлон", "ru": "Нейлон"}, "is_main": False},
         ],
     },
     {
         "slug": "kong-classic-red",
-        "name": "KONG Classic игрушка",
+        "name": {"uk": "KONG Classic іграшка", "ru": "KONG Classic игрушка"},
         "brand": "KONG",
-        "description": "Классическая игрушка из натурального каучука. Можно наполнять лакомствами. Отлично подходит для жевания.",
+        "description": {
+            "uk": "Класична іграшка з натурального каучуку. Можна наповнювати ласощами. Чудово підходить для жування.",
+            "ru": "Классическая игрушка из натурального каучука. Можно наполнять лакомствами. Отлично подходит для жевания.",
+        },
         "animals": ["dogs"],
         "categories": ["toys"],
         "attributes": [
-            {"key": "Размер", "value": "L", "is_main": True},
-            {"key": "Материал", "value": "Каучук", "is_main": True},
+            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "L", "ru": "L"}, "is_main": True},
+            {"key": {"uk": "Матеріал", "ru": "Материал"}, "value": {"uk": "Каучук", "ru": "Каучук"}, "is_main": True},
         ],
     },
     {
         "slug": "tetra-min-flakes",
-        "name": "TetraMin основной корм хлопья",
+        "name": {"uk": "TetraMin основний корм пластівці", "ru": "TetraMin основной корм хлопья"},
         "brand": "Tetra",
-        "description": "Основной корм в хлопьях для всех видов тропических рыб. Сбалансированная формула с витаминами.",
+        "description": {
+            "uk": "Основний корм у пластівцях для всіх видів тропічних риб. Збалансована формула з вітамінами.",
+            "ru": "Основной корм в хлопьях для всех видов тропических рыб. Сбалансированная формула с витаминами.",
+        },
         "animals": ["fish"],
         "categories": ["food", "dry-food"],
         "attributes": [
-            {"key": "Объём", "value": "250 мл", "is_main": True},
-            {"key": "Тип", "value": "Хлопья", "is_main": True},
+            {"key": {"uk": "Об'єм", "ru": "Объём"}, "value": {"uk": "250 мл", "ru": "250 мл"}, "is_main": True},
+            {"key": {"uk": "Тип", "ru": "Тип"}, "value": {"uk": "Пластівці", "ru": "Хлопья"}, "is_main": True},
         ],
     },
     {
         "slug": "vitakraft-kracker-rodents",
-        "name": "Vitakraft Kräcker для грызунов",
+        "name": {"uk": "Vitakraft Kräcker для гризунів", "ru": "Vitakraft Kräcker для грызунов"},
         "brand": "Vitakraft",
-        "description": "Крекер-лакомство с мёдом и зерновыми для хомяков и морских свинок.",
+        "description": {
+            "uk": "Крекер-ласощі з медом та зерновими для хом'яків та морських свинок.",
+            "ru": "Крекер-лакомство с мёдом и зерновыми для хомяков и морских свинок.",
+        },
         "animals": ["rodents"],
         "categories": ["food", "treats"],
         "attributes": [
-            {"key": "Вес", "value": "112 г", "is_main": True},
-            {"key": "Вкус", "value": "Мёд", "is_main": True},
+            {"key": {"uk": "Вага", "ru": "Вес"}, "value": {"uk": "112 г", "ru": "112 г"}, "is_main": True},
+            {"key": {"uk": "Смак", "ru": "Вкус"}, "value": {"uk": "Мед", "ru": "Мёд"}, "is_main": True},
         ],
     },
     {
         "slug": "trixie-bird-cage-natura",
-        "name": "Trixie Natura клетка для птиц",
+        "name": {"uk": "Trixie Natura клітка для птахів", "ru": "Trixie Natura клетка для птиц"},
         "brand": "Trixie",
-        "description": "Просторная клетка из натурального дерева для канареек и волнистых попугаев.",
+        "description": {
+            "uk": "Простора клітка з натурального дерева для канарок та хвилястих папуг.",
+            "ru": "Просторная клетка из натурального дерева для канареек и волнистых попугаев.",
+        },
         "animals": ["birds"],
         "categories": ["housing", "cages"],
         "attributes": [
-            {"key": "Размер", "value": "60×40×80 см", "is_main": True},
-            {"key": "Материал", "value": "Дерево/металл", "is_main": True},
+            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "60×40×80 см", "ru": "60×40×80 см"}, "is_main": True},
+            {"key": {"uk": "Матеріал", "ru": "Материал"}, "value": {"uk": "Дерево/метал", "ru": "Дерево/металл"}, "is_main": True},
         ],
     },
     {
         "slug": "exo-terra-terrarium-mini",
-        "name": "Exo Terra террариум Mini",
+        "name": {"uk": "Exo Terra тераріум Mini", "ru": "Exo Terra террариум Mini"},
         "brand": "Exo Terra",
-        "description": "Компактный стеклянный террариум для небольших рептилий и амфибий. Передняя дверца для удобного доступа.",
+        "description": {
+            "uk": "Компактний скляний тераріум для невеликих рептилій та амфібій. Передні дверцята для зручного доступу.",
+            "ru": "Компактный стеклянный террариум для небольших рептилий и амфибий. Передняя дверца для удобного доступа.",
+        },
         "animals": ["reptiles"],
         "categories": ["housing", "aquariums"],
         "attributes": [
-            {"key": "Размер", "value": "30×30×30 см", "is_main": True},
-            {"key": "Материал", "value": "Стекло", "is_main": True},
+            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "30×30×30 см", "ru": "30×30×30 см"}, "is_main": True},
+            {"key": {"uk": "Матеріал", "ru": "Материал"}, "value": {"uk": "Скло", "ru": "Стекло"}, "is_main": True},
         ],
     },
     {
         "slug": "flexi-new-classic-leash",
-        "name": "Flexi New Classic поводок-рулетка",
+        "name": {"uk": "Flexi New Classic повідок-рулетка", "ru": "Flexi New Classic поводок-рулетка"},
         "brand": "Flexi",
-        "description": "Рулетка с тросовым поводком длиной 5 м. Надёжный тормозной механизм.",
+        "description": {
+            "uk": "Рулетка з тросовим повідком довжиною 5 м. Надійний гальмівний механізм.",
+            "ru": "Рулетка с тросовым поводком длиной 5 м. Надёжный тормозной механизм.",
+        },
         "animals": ["dogs"],
         "categories": ["accessories", "leashes"],
         "attributes": [
-            {"key": "Длина", "value": "5 м", "is_main": True},
-            {"key": "Макс. вес собаки", "value": "20 кг", "is_main": True},
+            {"key": {"uk": "Довжина", "ru": "Длина"}, "value": {"uk": "5 м", "ru": "5 м"}, "is_main": True},
+            {"key": {"uk": "Макс. вага собаки", "ru": "Макс. вес собаки"}, "value": {"uk": "20 кг", "ru": "20 кг"}, "is_main": True},
         ],
     },
     {
         "slug": "8in1-excel-vitamins-adult",
-        "name": "8in1 Excel мультивитамины",
+        "name": {"uk": "8in1 Excel мультивітаміни", "ru": "8in1 Excel мультивитамины"},
         "brand": "8in1",
-        "description": "Мультивитаминная добавка для взрослых собак. Содержит витамины группы B, антиоксиданты и минералы.",
+        "description": {
+            "uk": "Мультивітамінна добавка для дорослих собак. Містить вітаміни групи B, антиоксиданти та мінерали.",
+            "ru": "Мультивитаминная добавка для взрослых собак. Содержит витамины группы B, антиоксиданты и минералы.",
+        },
         "animals": ["dogs"],
         "categories": ["health", "vitamins"],
         "attributes": [
-            {"key": "Количество", "value": "70 таблеток", "is_main": True},
-            {"key": "Возраст", "value": "Взрослые", "is_main": True},
+            {"key": {"uk": "Кількість", "ru": "Количество"}, "value": {"uk": "70 таблеток", "ru": "70 таблеток"}, "is_main": True},
+            {"key": {"uk": "Вік", "ru": "Возраст"}, "value": {"uk": "Дорослі", "ru": "Взрослые"}, "is_main": True},
         ],
     },
     {
         "slug": "furminator-deshedding-cat",
-        "name": "FURminator дешеддер для кошек",
+        "name": {"uk": "FURminator дешеддер для котів", "ru": "FURminator дешеддер для кошек"},
         "brand": "FURminator",
-        "description": "Инструмент для удаления подшёрстка у короткошёрстных кошек. Снижает линьку до 90%.",
+        "description": {
+            "uk": "Інструмент для видалення підшерстя у короткошерстих котів. Зменшує линяння до 90%.",
+            "ru": "Инструмент для удаления подшёрстка у короткошёрстных кошек. Снижает линьку до 90%.",
+        },
         "animals": ["cats"],
         "categories": ["health", "grooming"],
         "attributes": [
-            {"key": "Тип шерсти", "value": "Короткая", "is_main": True},
-            {"key": "Размер", "value": "S", "is_main": True},
+            {"key": {"uk": "Тип шерсті", "ru": "Тип шерсти"}, "value": {"uk": "Коротка", "ru": "Короткая"}, "is_main": True},
+            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "S", "ru": "S"}, "is_main": True},
         ],
     },
     {
         "slug": "trixie-cat-bed-minou",
-        "name": "Trixie Minou лежанка",
+        "name": {"uk": "Trixie Minou лежанка", "ru": "Trixie Minou лежанка"},
         "brand": "Trixie",
-        "description": "Мягкая плюшевая лежанка для кошек и маленьких собак. Бортики и подушка для максимального комфорта.",
+        "description": {
+            "uk": "М'яка плюшева лежанка для котів та маленьких собак. Бортики та подушка для максимального комфорту.",
+            "ru": "Мягкая плюшевая лежанка для кошек и маленьких собак. Бортики и подушка для максимального комфорта.",
+        },
         "animals": ["cats", "dogs"],
         "categories": ["housing", "beds"],
         "attributes": [
-            {"key": "Размер", "value": "50×40 см", "is_main": True},
-            {"key": "Материал", "value": "Плюш", "is_main": True},
-            {"key": "Цвет", "value": "Бежевый", "is_main": False},
+            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "50×40 см", "ru": "50×40 см"}, "is_main": True},
+            {"key": {"uk": "Матеріал", "ru": "Материал"}, "value": {"uk": "Плюш", "ru": "Плюш"}, "is_main": True},
+            {"key": {"uk": "Колір", "ru": "Цвет"}, "value": {"uk": "Бежевий", "ru": "Бежевый"}, "is_main": False},
         ],
     },
 ]
@@ -279,6 +321,19 @@ def seed_products(db: Session) -> None:
     for data in PRODUCTS:
         existing = db.query(Product).filter(Product.slug == data["slug"]).first()
         if existing:
+            existing.name = data["name"]
+            existing.description = data["description"]
+            for old_attr in existing.attributes:
+                db.delete(old_attr)
+            db.flush()
+            for attr in data.get("attributes", []):
+                db.add(ProductAttribute(
+                    id=uuid.uuid4(),
+                    product_id=existing.id,
+                    key=attr["key"],
+                    value=attr["value"],
+                    is_main=attr.get("is_main", False),
+                ))
             continue
 
         product = Product(
