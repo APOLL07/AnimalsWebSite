@@ -541,6 +541,7 @@ onMounted(async () => {
   font-family: inherit;
   width: 100%;
   max-width: 220px;
+  min-width: 0;
   box-sizing: border-box;
 }
 

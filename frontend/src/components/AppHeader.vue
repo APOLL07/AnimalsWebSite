@@ -2,6 +2,14 @@
   <header class="header">
     <div class="header__container">
       <RouterLink to="/" class="header__logo">
+        <svg class="header__logo-icon" width="22" height="22" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">
+          <!-- Paw print: 4 toes + palm -->
+          <ellipse cx="30" cy="18" rx="10" ry="14" transform="rotate(-15 30 18)" />
+          <ellipse cx="58" cy="12" rx="10" ry="14" transform="rotate(5 58 12)" />
+          <ellipse cx="82" cy="28" rx="10" ry="14" transform="rotate(20 82 28)" />
+          <ellipse cx="14" cy="42" rx="10" ry="14" transform="rotate(-25 14 42)" />
+          <path d="M50 38 C24 38 14 56 18 72 C22 86 36 94 50 94 C64 94 78 86 82 72 C86 56 76 38 50 38 Z" />
+        </svg>
         <span class="header__logo-text">fashion<strong>Animals</strong></span>
       </RouterLink>
 
@@ -309,6 +317,14 @@ function toggleLocale() {
   color: var(--color-text);
   font-size: 1.25rem;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.header__logo-icon {
+  flex-shrink: 0;
+  color: var(--color-primary);
 }
 
 .header__nav {

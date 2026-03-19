@@ -135,5 +135,5 @@ export default {
   'notify.subcategoryCreated': 'Підкатегорію створено',
 
   // Language
-  'lang.label': 'RU',
+  'lang.label': 'UA',
 }
