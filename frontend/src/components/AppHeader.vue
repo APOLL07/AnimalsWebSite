@@ -1,4 +1,11 @@
 <template>
+  <div class="header__topbar">
+    <div class="header__topbar-inner">
+      <span class="header__topbar-label">{{ t('footer.orderBy') }}</span>
+      <a href="tel:+380991900846" class="header__topbar-phone">+38 (099) 190-08-46</a>
+      <a href="tel:+380991900684" class="header__topbar-phone">+38 (099) 190-06-84</a>
+    </div>
+  </div>
   <header class="header">
     <div class="header__container">
       <RouterLink to="/" class="header__logo">
@@ -677,5 +684,39 @@ function toggleLocale() {
 .slide-leave-to {
   max-height: 0;
   opacity: 0;
+}
+
+/* Topbar with phone numbers */
+.header__topbar {
+  background: var(--color-bg-secondary, #f8f8f8);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.4rem 1rem;
+}
+
+.header__topbar-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+}
+
+.header__topbar-label {
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.header__topbar-phone {
+  color: var(--color-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.header__topbar-phone:hover {
+  opacity: 0.75;
 }
 </style>

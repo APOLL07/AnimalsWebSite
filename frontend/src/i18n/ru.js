@@ -11,6 +11,7 @@ export default {
 
   // Footer
   'footer.rights': 'Все права защищены.',
+  'footer.orderBy': 'Для заказа:',
 
   // Home page
   'home.heroSubtitle': 'Всё для ваших питомцев',
