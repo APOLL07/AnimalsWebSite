@@ -43,3 +43,12 @@ backend/alembic/versions/__pycache__/
 # Coverage
 htmlcov/
 .coverage
+
+# Images and media assets
+images/
+/homepage.png
+/catalog-dogs-filter.png
+КАТАЛОГ_ТОВАРІВ.txt
+
+# Playwright MCP screenshots
+.playwright-mcp/
