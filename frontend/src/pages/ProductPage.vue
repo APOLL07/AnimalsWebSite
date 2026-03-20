@@ -64,19 +64,31 @@
               </button>
             </template>
           </div>
-          <div v-if="product.images.length > 1" class="gallery__thumbs">
+          <div v-if="product.images.length > 1" class="gallery__thumbs" ref="thumbsRef">
             <button
-              v-for="img in product.images"
+              v-for="(img, idx) in product.images"
               :key="img.id"
-              :class="['gallery__thumb', { active: activeImage?.id === img.id }]"
-              @click="activeImage = img"
+              :class="['gallery__thumb', {
+                active: activeImage?.id === img.id,
+                'gallery__thumb--dragging': dragSrcIdx === idx,
+                'gallery__thumb--drag-over': dragOverIdx === idx && dragSrcIdx !== idx,
+                'gallery__thumb--draggable': auth.isLoggedIn,
+              }]"
+              @click="setActive(img)"
+              :data-id="img.id"
+              :draggable="auth.isLoggedIn"
+              @dragstart="onDragStart($event, idx)"
+              @dragover="onDragOver($event, idx)"
+              @drop="onDrop($event, idx)"
+              @dragend="onDragEnd"
             >
               <div v-if="img.media_type === 'video'" class="gallery__thumb-video">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
                   <polygon points="5 3 19 12 5 21" />
                 </svg>
               </div>
               <img v-else :src="img.url" :alt="product.name" />
+              <span v-if="auth.isLoggedIn && idx === 0" class="gallery__thumb-main-badge">★</span>
             </button>
           </div>
 
@@ -190,7 +202,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { api } from '../api/client'
 import { useAuthStore } from '../stores/auth'
@@ -207,6 +219,9 @@ const notify = useNotifications()
 const product = ref(null)
 const loading = ref(true)
 const activeImage = ref(null)
+const thumbsRef = ref(null)
+const dragSrcIdx = ref(null)
+const dragOverIdx = ref(null)
 const showEditForm = ref(false)
 const showDeleteConfirm = ref(false)
 const editingProduct = ref(null)
@@ -221,16 +236,29 @@ const activeIndex = computed(() => {
   return product.value.images.findIndex((img) => img.id === activeImage.value.id)
 })
 
+function scrollThumbIntoView(img) {
+  nextTick(() => {
+    if (!thumbsRef.value) return
+    const btn = thumbsRef.value.querySelector(`[data-id="${img.id}"]`)
+    if (btn) btn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+  })
+}
+
+function setActive(img) {
+  activeImage.value = img
+  scrollThumbIntoView(img)
+}
+
 function prevImage() {
   const images = product.value.images
   const idx = (activeIndex.value - 1 + images.length) % images.length
-  activeImage.value = images[idx]
+  setActive(images[idx])
 }
 
 function nextImage() {
   const images = product.value.images
   const idx = (activeIndex.value + 1) % images.length
-  activeImage.value = images[idx]
+  setActive(images[idx])
 }
 
 async function loadProduct() {
@@ -253,7 +281,8 @@ async function onUploadImage(e) {
   if (!file) return
   try {
     const updated = await api.uploadImage(product.value.id, file)
-    product.value = updated
+    // Only update images array — admin endpoint returns raw JSONB for text fields
+    product.value.images = updated.images
     activeImage.value = updated.images[updated.images.length - 1]
     notify.success(t('notify.photoUploaded'))
   } catch (err) {
@@ -267,13 +296,54 @@ async function onUploadVideo(e) {
   if (!file) return
   try {
     const updated = await api.uploadVideo(product.value.id, file)
-    product.value = updated
+    // Only update images array — admin endpoint returns raw JSONB for text fields
+    product.value.images = updated.images
     activeImage.value = updated.images[updated.images.length - 1]
     notify.success(t('notify.videoUploaded'))
   } catch (err) {
     notify.error(err.message)
   }
   e.target.value = ''
+}
+
+function onDragStart(e, idx) {
+  dragSrcIdx.value = idx
+  e.dataTransfer.effectAllowed = 'move'
+}
+
+function onDragOver(e, idx) {
+  e.preventDefault()
+  e.dataTransfer.dropEffect = 'move'
+  dragOverIdx.value = idx
+}
+
+function onDrop(e, idx) {
+  e.preventDefault()
+  if (dragSrcIdx.value === null || dragSrcIdx.value === idx) {
+    dragSrcIdx.value = null
+    dragOverIdx.value = null
+    return
+  }
+  const images = [...product.value.images]
+  const [moved] = images.splice(dragSrcIdx.value, 1)
+  images.splice(idx, 0, moved)
+  product.value.images = images
+  dragSrcIdx.value = null
+  dragOverIdx.value = null
+  saveReorder()
+}
+
+function onDragEnd() {
+  dragSrcIdx.value = null
+  dragOverIdx.value = null
+}
+
+async function saveReorder() {
+  try {
+    await api.reorderImages(product.value.id, product.value.images.map((i) => i.id))
+  } catch (err) {
+    notify.error(err.message)
+  }
 }
 
 async function onDeleteMedia() {
@@ -432,8 +502,37 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e0e0e0;
-  color: #666;
+  background: #2c2c2c;
+  color: #fff;
+}
+
+.gallery__thumb-main-badge {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-size: 10px;
+  color: #f59e0b;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 0 0 2px rgba(0,0,0,0.4);
+}
+
+.gallery__thumb--draggable {
+  cursor: grab;
+  position: relative;
+}
+
+.gallery__thumb--draggable:active {
+  cursor: grabbing;
+}
+
+.gallery__thumb--dragging {
+  opacity: 0.35;
+}
+
+.gallery__thumb--drag-over {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .gallery__admin {

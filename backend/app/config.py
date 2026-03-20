@@ -18,11 +18,11 @@ class Settings(BaseSettings):
 
     # Admin seed
     ADMIN_EMAIL: str = "admin@fashionanimals"
-    ADMIN_PASSWORD: str = "changeme_admin_password"
+    ADMIN_PASSWORD: str = "123456"
 
     # Upload
     UPLOAD_DIR: str = "/app/uploaded_media"
-    MAX_IMAGE_SIZE: int = 5 * 1024 * 1024  # 5MB
+    MAX_IMAGE_SIZE: int = 100 * 1024 * 1024  # 100MB
     MAX_IMAGES_PER_PRODUCT: int = 10
 
     model_config = {"env_file": ".env", "extra": "ignore"}

@@ -1,4 +1,4 @@
-"""Seed script: populates the database with initial data."""
+"""Seed script: populates the database with catalog data."""
 
 import uuid
 
@@ -11,103 +11,478 @@ from app.models import *  # noqa: F401,F403
 from app.models.admin_user import AdminUser
 from app.models.animal import Animal
 from app.models.category import Category
+from app.models.product import Product, ProductAttribute, ProductImage
 
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
+
 ANIMALS = [
     {"slug": "dogs", "name": {"uk": "Собаки", "ru": "Собаки"}},
     {"slug": "cats", "name": {"uk": "Коти", "ru": "Кошки"}},
-    {"slug": "rodents", "name": {"uk": "Гризуни", "ru": "Грызуны"}},
-    {"slug": "birds", "name": {"uk": "Птахи", "ru": "Птицы"}},
-    {"slug": "fish", "name": {"uk": "Рибки", "ru": "Рыбки"}},
-    {"slug": "reptiles", "name": {"uk": "Рептилії", "ru": "Рептилии"}},
 ]
 
 CATEGORIES = [
     {
-        "slug": "food",
-        "name": {"uk": "Корми", "ru": "Корма"},
+        "slug": "feeders",
+        "name": {"uk": "Підставки для мисок", "ru": "Подставки для мисок"},
         "children": [
-            {"slug": "dry-food", "name": {"uk": "Сухий корм", "ru": "Сухой корм"}},
-            {"slug": "wet-food", "name": {"uk": "Вологий корм", "ru": "Влажный корм"}},
-            {"slug": "treats", "name": {"uk": "Ласощі", "ru": "Лакомства"}},
+            {"slug": "feeders-s", "name": {"uk": "Розмір S (24×13 см)", "ru": "Размер S (24×13 см)"}},
+            {"slug": "feeders-m", "name": {"uk": "Розмір M (29×15 см)", "ru": "Размер M (29×15 см)"}},
+            {"slug": "feeders-l", "name": {"uk": "Розмір L (36×20 см)", "ru": "Размер L (36×20 см)"}},
         ],
     },
     {
-        "slug": "accessories",
-        "name": {"uk": "Амуніція", "ru": "Амуниция"},
-        "children": [
-            {"slug": "collars", "name": {"uk": "Нашийники", "ru": "Ошейники"}},
-            {"slug": "leashes", "name": {"uk": "Повідки", "ru": "Поводки"}},
-            {"slug": "bowls", "name": {"uk": "Миски", "ru": "Миски"}},
-        ],
-    },
-    {
-        "slug": "toys",
-        "name": {"uk": "Іграшки", "ru": "Игрушки"},
+        "slug": "hammock-tables",
+        "name": {"uk": "Журнальні столи-гамаки", "ru": "Журнальные столы-гамаки"},
         "children": [],
     },
     {
-        "slug": "health",
-        "name": {"uk": "Здоров'я", "ru": "Здоровье"},
-        "children": [
-            {"slug": "vitamins", "name": {"uk": "Вітаміни", "ru": "Витамины"}},
-            {"slug": "grooming", "name": {"uk": "Грумінг", "ru": "Груминг"}},
+        "slug": "pet-beds",
+        "name": {"uk": "Ліжечка для тварин", "ru": "Лежанки для животных"},
+        "children": [],
+    },
+]
+
+
+def feeder_attrs(size_uk, size_ru, height, bowl_volume, bowl_diameter, frame_color_uk, frame_color_ru, price):
+    return [
+        {"key": {"uk": "Ціна", "ru": "Цена"}, "value": {"uk": f"{price} ₴", "ru": f"{price} ₴"}, "is_main": True},
+        {"key": {"uk": "Розміри", "ru": "Размеры"}, "value": {"uk": size_uk, "ru": size_ru}, "is_main": True},
+        {"key": {"uk": "Висота", "ru": "Высота"}, "value": {"uk": f"{height} см", "ru": f"{height} см"}, "is_main": False},
+        {"key": {"uk": "Об'єм мисок", "ru": "Объём мисок"}, "value": {"uk": f"2 × {bowl_volume} мл", "ru": f"2 × {bowl_volume} мл"}, "is_main": False},
+        {"key": {"uk": "Діаметр мисок", "ru": "Диаметр мисок"}, "value": {"uk": f"{bowl_diameter} см", "ru": f"{bowl_diameter} см"}, "is_main": False},
+        {"key": {"uk": "Колір каркасу", "ru": "Цвет каркаса"}, "value": {"uk": frame_color_uk, "ru": frame_color_ru}, "is_main": True},
+        {"key": {"uk": "Матеріал каркасу", "ru": "Материал каркаса"}, "value": {"uk": "Сталь з порошковим фарбуванням", "ru": "Сталь с порошковым покрытием"}, "is_main": False},
+        {"key": {"uk": "Матеріал ніжок", "ru": "Материал ножек"}, "value": {"uk": "Силікон", "ru": "Силикон"}, "is_main": False},
+        {"key": {"uk": "Матеріал мисок", "ru": "Материал мисок"}, "value": {"uk": "Харчова нержавіюча сталь", "ru": "Пищевая нержавеющая сталь"}, "is_main": False},
+        {"key": {"uk": "Миски", "ru": "Миски"}, "value": {"uk": "TM Trixie (Німеччина)", "ru": "TM Trixie (Германия)"}, "is_main": False},
+    ]
+
+
+FEEDER_DESCRIPTION = {
+    "uk": (
+        "Підставка для мисок у стилі лофт. Каркас виготовлений зі сталі, "
+        "силіконові ніжки не ковзають та не пошкоджують підлогу. "
+        "Миски TM Trixie з харчової нержавіючої сталі європейської якості. "
+        "Ніжки вставлені в отвори — не відпадають під час використання."
+    ),
+    "ru": (
+        "Подставка для мисок в стиле лофт. Каркас изготовлен из стали, "
+        "силиконовые ножки не скользят и не повреждают пол. "
+        "Миски TM Trixie из пищевой нержавеющей стали европейского качества. "
+        "Ножки вставлены в отверстия — не выпадают во время использования."
+    ),
+}
+
+PRODUCTS = [
+    # ── Підставки S (24×13 см) ───────────────────────────────────────────────
+    {
+        "slug": "feeder-s-black",
+        "name": {"uk": "Підставка для мисок 24×13 см — Чорна", "ru": "Подставка для мисок 24×13 см — Чёрная"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-s"],
+        "images": [
+            {"url": "/images/Кормушка чёрная.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка чёрная с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка чёрная вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("24×13 см", "24×13 см", 5, 200, 10, "Чорний", "Чёрный", 900),
+    },
+    {
+        "slug": "feeder-s-gray",
+        "name": {"uk": "Підставка для мисок 24×13 см — Сіра (Графіт)", "ru": "Подставка для мисок 24×13 см — Серая (Графит)"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-s"],
+        "images": [
+            {"url": "/images/Кормушка серая.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка серая с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка серая вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("24×13 см", "24×13 см", 5, 200, 10, "Сірий (графіт)", "Серый (графит)", 900),
+    },
+    {
+        "slug": "feeder-s-white",
+        "name": {"uk": "Підставка для мисок 24×13 см — Біла", "ru": "Подставка для мисок 24×13 см — Белая"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-s"],
+        "images": [
+            {"url": "/images/Кормушка белая.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка белая с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка белая вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("24×13 см", "24×13 см", 5, 200, 10, "Білий", "Белый", 900),
+    },
+    {
+        "slug": "feeder-s-stainless",
+        "name": {"uk": "Підставка для мисок 24×13 см — Нержавіюча сталь (глянець)", "ru": "Подставка для мисок 24×13 см — Нержавеющая сталь (глянец)"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-s"],
+        "images": [
+            {"url": "/images/Кормушка нержавейка.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка нержавейка с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка нержавейка вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("24×13 см", "24×13 см", 5, 200, 10, "Нержавіюча сталь (глянець)", "Нержавеющая сталь (глянец)", 900),
+    },
+
+    # ── Підставки M (29×15 см) ───────────────────────────────────────────────
+    {
+        "slug": "feeder-m-black",
+        "name": {"uk": "Підставка для мисок 29×15 см — Чорна", "ru": "Подставка для мисок 29×15 см — Чёрная"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-m"],
+        "images": [
+            {"url": "/images/Кормушка чёрная.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка чёрная с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка чёрная вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("29×15 см", "29×15 см", 7, 450, 13, "Чорний", "Чёрный", 1000),
+    },
+    {
+        "slug": "feeder-m-gray",
+        "name": {"uk": "Підставка для мисок 29×15 см — Сіра (Графіт)", "ru": "Подставка для мисок 29×15 см — Серая (Графит)"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-m"],
+        "images": [
+            {"url": "/images/Кормушка серая.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка серая с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка серая вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("29×15 см", "29×15 см", 7, 450, 13, "Сірий (графіт)", "Серый (графит)", 1000),
+    },
+    {
+        "slug": "feeder-m-white",
+        "name": {"uk": "Підставка для мисок 29×15 см — Біла", "ru": "Подставка для мисок 29×15 см — Белая"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-m"],
+        "images": [
+            {"url": "/images/Кормушка белая.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка белая с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка белая вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("29×15 см", "29×15 см", 7, 450, 13, "Білий", "Белый", 1000),
+    },
+    {
+        "slug": "feeder-m-stainless",
+        "name": {"uk": "Підставка для мисок 29×15 см — Нержавіюча сталь (глянець)", "ru": "Подставка для мисок 29×15 см — Нержавеющая сталь (глянец)"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-m"],
+        "images": [
+            {"url": "/images/Кормушка нержавейка.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка нержавейка с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка нержавейка вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("29×15 см", "29×15 см", 7, 450, 13, "Нержавіюча сталь (глянець)", "Нержавеющая сталь (глянец)", 1200),
+    },
+
+    # ── Підставки L (36×20 см) ───────────────────────────────────────────────
+    {
+        "slug": "feeder-l-black",
+        "name": {"uk": "Підставка для мисок 36×20 см — Чорна", "ru": "Подставка для мисок 36×20 см — Чёрная"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-l"],
+        "images": [
+            {"url": "/images/Кормушка чёрная.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка чёрная с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка чёрная вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("36×20 см", "36×20 см", 15, 750, 17, "Чорний", "Чёрный", 1200),
+    },
+    {
+        "slug": "feeder-l-gray",
+        "name": {"uk": "Підставка для мисок 36×20 см — Сіра (Графіт)", "ru": "Подставка для мисок 36×20 см — Серая (Графит)"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-l"],
+        "images": [
+            {"url": "/images/Кормушка серая.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка серая с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка серая вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("36×20 см", "36×20 см", 15, 750, 17, "Сірий (графіт)", "Серый (графит)", 1200),
+    },
+    {
+        "slug": "feeder-l-white",
+        "name": {"uk": "Підставка для мисок 36×20 см — Біла", "ru": "Подставка для мисок 36×20 см — Белая"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-l"],
+        "images": [
+            {"url": "/images/Кормушка белая.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка белая с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка белая вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("36×20 см", "36×20 см", 15, 750, 17, "Білий", "Белый", 1200),
+    },
+    {
+        "slug": "feeder-l-stainless",
+        "name": {"uk": "Підставка для мисок 36×20 см — Нержавіюча сталь (глянець)", "ru": "Подставка для мисок 36×20 см — Нержавеющая сталь (глянец)"},
+        "brand": "FashionAnimals",
+        "description": FEEDER_DESCRIPTION,
+        "animals": ["cats", "dogs"],
+        "categories": ["feeders", "feeders-l"],
+        "images": [
+            {"url": "/images/Кормушка нержавейка.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кормушка нержавейка с котом.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кормушка нержавейка вид сверху.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": feeder_attrs("36×20 см", "36×20 см", 15, 750, 17, "Нержавіюча сталь (глянець)", "Нержавеющая сталь (глянец)", 1500),
+    },
+
+    # ── Журнальні столи-гамаки ────────────────────────────────────────────────
+    {
+        "slug": "table-round-gray",
+        "name": {"uk": "Журнальний стіл-гамак круглий — Бетон-стайл", "ru": "Журнальный стол-гамак круглый — Бетон-стайл"},
+        "brand": "FashionAnimals",
+        "description": {
+            "uk": (
+                "Журнальний стіл-гамак 2в1 — для вас і вашого улюбленця. "
+                "Тепер можна релаксувати, насолоджуватись кавою чи працювати за ноутбуком "
+                "і одночасно пестити свого пухнастика, який також може відпочивати поруч. "
+                "Каркас зі сталі з порошковим фарбуванням, стільниця з МДФ, гамак — тканина антикіготь. "
+                "Легко збирається/розбирається. Ключ у комплекті. У розібраному вигляді 50×50×7 см."
+            ),
+            "ru": (
+                "Журнальный стол-гамак 2в1 — для вас и вашего питомца. "
+                "Теперь можно расслабляться, наслаждаться кофе или работать за ноутбуком "
+                "и одновременно гладить своего питомца, который тоже может отдыхать рядом. "
+                "Каркас из стали с порошковым покрытием, столешница из МДФ, гамак — ткань антикоготь. "
+                "Легко собирается/разбирается. Ключ в комплекте. В разобранном виде 50×50×7 см."
+            ),
+        },
+        "animals": ["cats", "dogs"],
+        "categories": ["hammock-tables"],
+        "images": [
+            {"url": "/images/столик круг без кота.jpg", "order": 0, "is_main": True},
+            {"url": "/images/стол круг + кот жёлтый фон.jpg", "order": 1, "is_main": False},
+            {"url": "/images/стол круг собака.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": [
+            {"key": {"uk": "Ціна", "ru": "Цена"}, "value": {"uk": "2500 ₴", "ru": "2500 ₴"}, "is_main": True},
+            {"key": {"uk": "Форма", "ru": "Форма"}, "value": {"uk": "Кругла", "ru": "Круглая"}, "is_main": True},
+            {"key": {"uk": "Діаметр", "ru": "Диаметр"}, "value": {"uk": "50 см", "ru": "50 см"}, "is_main": False},
+            {"key": {"uk": "Висота", "ru": "Высота"}, "value": {"uk": "50 см", "ru": "50 см"}, "is_main": False},
+            {"key": {"uk": "Колір стільниці", "ru": "Цвет столешницы"}, "value": {"uk": "Бетон-стайл", "ru": "Бетон-стайл"}, "is_main": True},
+            {"key": {"uk": "Матеріал каркасу", "ru": "Материал каркаса"}, "value": {"uk": "Сталь з порошковим фарбуванням", "ru": "Сталь с порошковым покрытием"}, "is_main": False},
+            {"key": {"uk": "Матеріал стільниці", "ru": "Материал столешницы"}, "value": {"uk": "МДФ", "ru": "МДФ"}, "is_main": False},
+            {"key": {"uk": "Матеріал гамака", "ru": "Материал гамака"}, "value": {"uk": "Тканина антикіготь", "ru": "Ткань антикоготь"}, "is_main": False},
         ],
     },
     {
-        "slug": "housing",
-        "name": {"uk": "Житло", "ru": "Жильё"},
-        "children": [
-            {"slug": "beds", "name": {"uk": "Лежанки", "ru": "Лежанки"}},
-            {"slug": "cages", "name": {"uk": "Клітки", "ru": "Клетки"}},
-            {"slug": "aquariums", "name": {"uk": "Акваріуми", "ru": "Аквариумы"}},
+        "slug": "table-round-wood",
+        "name": {"uk": "Журнальний стіл-гамак круглий — Натуральне дерево", "ru": "Журнальный стол-гамак круглый — Натуральное дерево"},
+        "brand": "FashionAnimals",
+        "description": {
+            "uk": (
+                "Журнальний стіл-гамак 2в1 — для вас і вашого улюбленця. "
+                "Стільниця з натурального дерева, покрита маслом-воском. "
+                "Каркас зі сталі з порошковим фарбуванням, гамак — тканина антикіготь. "
+                "Легко збирається/розбирається. Ключ у комплекті. У розібраному вигляді 50×50×7 см."
+            ),
+            "ru": (
+                "Журнальный стол-гамак 2в1 — для вас и вашего питомца. "
+                "Столешница из натурального дерева, покрыта маслом-воском. "
+                "Каркас из стали с порошковым покрытием, гамак — ткань антикоготь. "
+                "Легко собирается/разбирается. Ключ в комплекте. В разобранном виде 50×50×7 см."
+            ),
+        },
+        "animals": ["cats", "dogs"],
+        "categories": ["hammock-tables"],
+        "images": [
+            {"url": "/images/стол круг с домовёнком.jpg", "order": 0, "is_main": True},
+            {"url": "/images/стол круг ноут + кот.jpg", "order": 1, "is_main": False},
+            {"url": "/images/стол круг.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": [
+            {"key": {"uk": "Ціна", "ru": "Цена"}, "value": {"uk": "2500 ₴", "ru": "2500 ₴"}, "is_main": True},
+            {"key": {"uk": "Форма", "ru": "Форма"}, "value": {"uk": "Кругла", "ru": "Круглая"}, "is_main": True},
+            {"key": {"uk": "Діаметр", "ru": "Диаметр"}, "value": {"uk": "50 см", "ru": "50 см"}, "is_main": False},
+            {"key": {"uk": "Висота", "ru": "Высота"}, "value": {"uk": "50 см", "ru": "50 см"}, "is_main": False},
+            {"key": {"uk": "Колір стільниці", "ru": "Цвет столешницы"}, "value": {"uk": "Натуральне дерево", "ru": "Натуральное дерево"}, "is_main": True},
+            {"key": {"uk": "Матеріал каркасу", "ru": "Материал каркаса"}, "value": {"uk": "Сталь з порошковим фарбуванням", "ru": "Сталь с порошковым покрытием"}, "is_main": False},
+            {"key": {"uk": "Матеріал стільниці", "ru": "Материал столешницы"}, "value": {"uk": "Натуральне дерево (покрите маслом-воском)", "ru": "Натуральное дерево (покрыто маслом-воском)"}, "is_main": False},
+            {"key": {"uk": "Матеріал гамака", "ru": "Материал гамака"}, "value": {"uk": "Тканина антикіготь", "ru": "Ткань антикоготь"}, "is_main": False},
+        ],
+    },
+    {
+        "slug": "table-square-gray",
+        "name": {"uk": "Журнальний стіл-гамак квадратний — Бетон-стайл", "ru": "Журнальный стол-гамак квадратный — Бетон-стайл"},
+        "brand": "FashionAnimals",
+        "description": {
+            "uk": (
+                "Журнальний стіл-гамак 2в1 квадратної форми — для вас і вашого улюбленця. "
+                "Стільниця МДФ у кольорі бетон-стайл. "
+                "Каркас зі сталі з порошковим фарбуванням, гамак — тканина антикіготь. "
+                "Легко збирається/розбирається. Ключ у комплекті. У розібраному вигляді 50×50×7 см."
+            ),
+            "ru": (
+                "Журнальный стол-гамак 2в1 квадратной формы — для вас и вашего питомца. "
+                "Столешница МДФ в цвете бетон-стайл. "
+                "Каркас из стали с порошковым покрытием, гамак — ткань антикоготь. "
+                "Легко собирается/разбирается. Ключ в комплекте. В разобранном виде 50×50×7 см."
+            ),
+        },
+        "animals": ["cats", "dogs"],
+        "categories": ["hammock-tables"],
+        "images": [
+            {"url": "/images/столик квадрат с котом.jpg", "order": 0, "is_main": True},
+            {"url": "/images/Стол квадр кот.jpg", "order": 1, "is_main": False},
+            {"url": "/images/стол квадр собака.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": [
+            {"key": {"uk": "Ціна", "ru": "Цена"}, "value": {"uk": "2500 ₴", "ru": "2500 ₴"}, "is_main": True},
+            {"key": {"uk": "Форма", "ru": "Форма"}, "value": {"uk": "Квадратна", "ru": "Квадратная"}, "is_main": True},
+            {"key": {"uk": "Розміри стільниці", "ru": "Размеры столешницы"}, "value": {"uk": "50×50 см", "ru": "50×50 см"}, "is_main": False},
+            {"key": {"uk": "Висота", "ru": "Высота"}, "value": {"uk": "50 см", "ru": "50 см"}, "is_main": False},
+            {"key": {"uk": "Колір стільниці", "ru": "Цвет столешницы"}, "value": {"uk": "Бетон-стайл", "ru": "Бетон-стайл"}, "is_main": True},
+            {"key": {"uk": "Матеріал каркасу", "ru": "Материал каркаса"}, "value": {"uk": "Сталь з порошковим фарбуванням", "ru": "Сталь с порошковым покрытием"}, "is_main": False},
+            {"key": {"uk": "Матеріал стільниці", "ru": "Материал столешницы"}, "value": {"uk": "МДФ", "ru": "МДФ"}, "is_main": False},
+            {"key": {"uk": "Матеріал гамака", "ru": "Материал гамака"}, "value": {"uk": "Тканина антикіготь", "ru": "Ткань антикоготь"}, "is_main": False},
+        ],
+    },
+    {
+        "slug": "table-square-wood",
+        "name": {"uk": "Журнальний стіл-гамак квадратний — Натуральне дерево", "ru": "Журнальный стол-гамак квадратный — Натуральное дерево"},
+        "brand": "FashionAnimals",
+        "description": {
+            "uk": (
+                "Журнальний стіл-гамак 2в1 квадратної форми — для вас і вашого улюбленця. "
+                "Стільниця з натурального дерева, покрита маслом-воском. "
+                "Каркас зі сталі з порошковим фарбуванням, гамак — тканина антикіготь. "
+                "Легко збирається/розбирається. Ключ у комплекті. У розібраному вигляді 50×50×7 см."
+            ),
+            "ru": (
+                "Журнальный стол-гамак 2в1 квадратной формы — для вас и вашего питомца. "
+                "Столешница из натурального дерева, покрыта маслом-воском. "
+                "Каркас из стали с порошковым покрытием, гамак — ткань антикоготь. "
+                "Легко собирается/разбирается. Ключ в комплекте. В разобранном виде 50×50×7 см."
+            ),
+        },
+        "animals": ["cats", "dogs"],
+        "categories": ["hammock-tables"],
+        "images": [
+            {"url": "/images/стол квадрат на коврике.jpg", "order": 0, "is_main": True},
+            {"url": "/images/стол квадрат + кот + глобус.jpg", "order": 1, "is_main": False},
+            {"url": "/images/стол квадрат + кот + ноут.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": [
+            {"key": {"uk": "Ціна", "ru": "Цена"}, "value": {"uk": "2500 ₴", "ru": "2500 ₴"}, "is_main": True},
+            {"key": {"uk": "Форма", "ru": "Форма"}, "value": {"uk": "Квадратна", "ru": "Квадратная"}, "is_main": True},
+            {"key": {"uk": "Розміри стільниці", "ru": "Размеры столешницы"}, "value": {"uk": "50×50 см", "ru": "50×50 см"}, "is_main": False},
+            {"key": {"uk": "Висота", "ru": "Высота"}, "value": {"uk": "50 см", "ru": "50 см"}, "is_main": False},
+            {"key": {"uk": "Колір стільниці", "ru": "Цвет столешницы"}, "value": {"uk": "Натуральне дерево", "ru": "Натуральное дерево"}, "is_main": True},
+            {"key": {"uk": "Матеріал каркасу", "ru": "Материал каркаса"}, "value": {"uk": "Сталь з порошковим фарбуванням", "ru": "Сталь с порошковым покрытием"}, "is_main": False},
+            {"key": {"uk": "Матеріал стільниці", "ru": "Материал столешницы"}, "value": {"uk": "Натуральне дерево (покрите маслом-воском)", "ru": "Натуральное дерево (покрыто маслом-воском)"}, "is_main": False},
+            {"key": {"uk": "Матеріал гамака", "ru": "Материал гамака"}, "value": {"uk": "Тканина антикіготь", "ru": "Ткань антикоготь"}, "is_main": False},
+        ],
+    },
+
+    # ── Ліжечко ───────────────────────────────────────────────────────────────
+    {
+        "slug": "pet-bed-wooden",
+        "name": {"uk": "Ліжечко дерев'яне для котів та собак", "ru": "Кроватка деревянная для кошек и собак"},
+        "brand": "FashionAnimals",
+        "description": {
+            "uk": (
+                "Ліжечко призначене для котиків, собак малого та середнього розмірів. "
+                "Каркас виготовлений з масиву натурального дерева, покритого маслом-воском — "
+                "гіпоалергенний та антистатичний. "
+                "Перина з тканини антикіготь, наповнювач — поролон 2 см + 2 шари синтепону, "
+                "завдяки чому перина не просідає та має ортопедичний ефект. "
+                "Знімний чохол перини — можна прати. "
+                "Легко збирається/розбирається. Ключ у комплекті. У розібраному вигляді 60×40×9 см."
+            ),
+            "ru": (
+                "Кроватка предназначена для кошек, собак малого и среднего размеров. "
+                "Каркас изготовлен из массива натурального дерева, покрытого маслом-воском — "
+                "гипоаллергенный и антистатический. "
+                "Перина из ткани антикоготь, наполнитель — поролон 2 см + 2 слоя синтепона, "
+                "благодаря чему перина не проседает и имеет ортопедический эффект. "
+                "Съёмный чехол перины — можно стирать. "
+                "Легко собирается/разбирается. Ключ в комплекте. В разобранном виде 60×40×9 см."
+            ),
+        },
+        "animals": ["cats", "dogs"],
+        "categories": ["pet-beds"],
+        "images": [
+            {"url": "/images/кроватка без ничего.jpg", "order": 0, "is_main": True},
+            {"url": "/images/кроватка с подушкой.jpg", "order": 1, "is_main": False},
+            {"url": "/images/кровать кот.jpg", "order": 2, "is_main": False},
+        ],
+        "attributes": [
+            {"key": {"uk": "Ціна", "ru": "Цена"}, "value": {"uk": "2400 ₴", "ru": "2400 ₴"}, "is_main": True},
+            {"key": {"uk": "Розміри", "ru": "Размеры"}, "value": {"uk": "60×40 см", "ru": "60×40 см"}, "is_main": True},
+            {"key": {"uk": "Висота", "ru": "Высота"}, "value": {"uk": "40 см", "ru": "40 см"}, "is_main": False},
+            {"key": {"uk": "Матеріал каркасу", "ru": "Материал каркаса"}, "value": {"uk": "Масив натурального дерева (покрито маслом-воском)", "ru": "Массив натурального дерева (покрыто маслом-воском)"}, "is_main": False},
+            {"key": {"uk": "Матеріал перини", "ru": "Материал перины"}, "value": {"uk": "Тканина антикіготь", "ru": "Ткань антикоготь"}, "is_main": False},
+            {"key": {"uk": "Наповнювач", "ru": "Наполнитель"}, "value": {"uk": "Поролон 2 см + синтепон 2 шари", "ru": "Поролон 2 см + синтепон 2 слоя"}, "is_main": False},
+            {"key": {"uk": "Особливості", "ru": "Особенности"}, "value": {"uk": "Гіпоалергенний, антистатичний, знімний чохол, ортопедичний ефект", "ru": "Гипоаллергенный, антистатический, съёмный чехол, ортопедический эффект"}, "is_main": False},
         ],
     },
 ]
 
 
+# ── Seeding functions ──────────────────────────────────────────────────────────
+
+def clear_data(db: Session) -> None:
+    from sqlalchemy import text
+    db.execute(text("DELETE FROM product_animals"))
+    db.execute(text("DELETE FROM product_categories"))
+    db.execute(text("DELETE FROM product_images"))
+    db.execute(text("DELETE FROM product_attributes"))
+    db.execute(text("DELETE FROM products"))
+    db.execute(text("DELETE FROM categories"))
+    db.execute(text("DELETE FROM animals"))
+    db.commit()
+    print("  Cleared existing data.")
+
+
 def seed_animals(db: Session) -> None:
     for data in ANIMALS:
-        existing = db.query(Animal).filter(Animal.slug == data["slug"]).first()
-        if not existing:
-            db.add(Animal(id=uuid.uuid4(), **data))
-        else:
-            existing.name = data["name"]
+        db.add(Animal(id=uuid.uuid4(), **data))
     db.commit()
     print(f"  Animals: {db.query(Animal).count()} records")
 
 
 def seed_categories(db: Session) -> None:
     for cat_data in CATEGORIES:
-        parent = db.query(Category).filter(Category.slug == cat_data["slug"]).first()
-        if not parent:
-            parent = Category(
-                id=uuid.uuid4(),
-                slug=cat_data["slug"],
-                name=cat_data["name"],
-                parent_id=None,
-            )
-            db.add(parent)
-            db.flush()
-        else:
-            parent.name = cat_data["name"]
-
+        parent = Category(
+            id=uuid.uuid4(),
+            slug=cat_data["slug"],
+            name=cat_data["name"],
+            parent_id=None,
+        )
+        db.add(parent)
+        db.flush()
         for child_data in cat_data.get("children", []):
-            existing = db.query(Category).filter(Category.slug == child_data["slug"]).first()
-            if not existing:
-                db.add(
-                    Category(
-                        id=uuid.uuid4(),
-                        slug=child_data["slug"],
-                        name=child_data["name"],
-                        parent_id=parent.id,
-                    )
-                )
-            else:
-                existing.name = child_data["name"]
+            db.add(Category(
+                id=uuid.uuid4(),
+                slug=child_data["slug"],
+                name=child_data["name"],
+                parent_id=parent.id,
+            ))
     db.commit()
     print(f"  Categories: {db.query(Category).count()} records")
 
@@ -115,227 +490,20 @@ def seed_categories(db: Session) -> None:
 def seed_admin(db: Session) -> None:
     existing = db.query(AdminUser).filter(AdminUser.email == settings.ADMIN_EMAIL).first()
     if not existing:
-        admin = AdminUser(
+        db.add(AdminUser(
             id=uuid.uuid4(),
             email=settings.ADMIN_EMAIL,
             password_hash=hash_password(settings.ADMIN_PASSWORD),
             role="admin",
-        )
-        db.add(admin)
+        ))
         db.commit()
         print(f"  Admin user created: {settings.ADMIN_EMAIL}")
     else:
         print(f"  Admin user already exists: {settings.ADMIN_EMAIL}")
 
 
-PRODUCTS = [
-    {
-        "slug": "royal-canin-maxi-adult",
-        "name": {"uk": "Royal Canin Maxi Adult", "ru": "Royal Canin Maxi Adult"},
-        "brand": "Royal Canin",
-        "description": {
-            "uk": "Сухий корм для великих собак від 15 місяців до 5 років. Підтримує здоров'я суглобів та оптимальну вагу.",
-            "ru": "Сухой корм для крупных собак от 15 месяцев до 5 лет. Поддерживает здоровье суставов и оптимальный вес.",
-        },
-        "animals": ["dogs"],
-        "categories": ["food", "dry-food"],
-        "attributes": [
-            {"key": {"uk": "Вага", "ru": "Вес"}, "value": {"uk": "15 кг", "ru": "15 кг"}, "is_main": True},
-            {"key": {"uk": "Вік", "ru": "Возраст"}, "value": {"uk": "від 15 місяців", "ru": "от 15 месяцев"}, "is_main": True},
-            {"key": {"uk": "Країна", "ru": "Страна"}, "value": {"uk": "Франція", "ru": "Франция"}, "is_main": False},
-        ],
-    },
-    {
-        "slug": "whiskas-tuna-pouch",
-        "name": {"uk": "Whiskas з тунцем у желе", "ru": "Whiskas с тунцом в желе"},
-        "brand": "Whiskas",
-        "description": {
-            "uk": "Вологий корм для дорослих котів з ніжним тунцем в апетитному желе. Повнораціонний.",
-            "ru": "Влажный корм для взрослых кошек с нежным тунцом в аппетитном желе. Полнорационный.",
-        },
-        "animals": ["cats"],
-        "categories": ["food", "wet-food"],
-        "attributes": [
-            {"key": {"uk": "Вага", "ru": "Вес"}, "value": {"uk": "85 г", "ru": "85 г"}, "is_main": True},
-            {"key": {"uk": "Смак", "ru": "Вкус"}, "value": {"uk": "Тунець", "ru": "Тунец"}, "is_main": True},
-        ],
-    },
-    {
-        "slug": "ferplast-collar-ergocomfort",
-        "name": {"uk": "Ferplast Ergocomfort нашийник", "ru": "Ferplast Ergocomfort ошейник"},
-        "brand": "Ferplast",
-        "description": {
-            "uk": "Ергономічний нашийник з м'якою підкладкою. Регульований розмір, надійна застібка.",
-            "ru": "Эргономичный ошейник с мягкой подкладкой. Регулируемый размер, надёжная застёжка.",
-        },
-        "animals": ["dogs"],
-        "categories": ["accessories", "collars"],
-        "attributes": [
-            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "M (34-42 см)", "ru": "M (34-42 см)"}, "is_main": True},
-            {"key": {"uk": "Колір", "ru": "Цвет"}, "value": {"uk": "Синій", "ru": "Синий"}, "is_main": True},
-            {"key": {"uk": "Матеріал", "ru": "Материал"}, "value": {"uk": "Нейлон", "ru": "Нейлон"}, "is_main": False},
-        ],
-    },
-    {
-        "slug": "kong-classic-red",
-        "name": {"uk": "KONG Classic іграшка", "ru": "KONG Classic игрушка"},
-        "brand": "KONG",
-        "description": {
-            "uk": "Класична іграшка з натурального каучуку. Можна наповнювати ласощами. Чудово підходить для жування.",
-            "ru": "Классическая игрушка из натурального каучука. Можно наполнять лакомствами. Отлично подходит для жевания.",
-        },
-        "animals": ["dogs"],
-        "categories": ["toys"],
-        "attributes": [
-            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "L", "ru": "L"}, "is_main": True},
-            {"key": {"uk": "Матеріал", "ru": "Материал"}, "value": {"uk": "Каучук", "ru": "Каучук"}, "is_main": True},
-        ],
-    },
-    {
-        "slug": "tetra-min-flakes",
-        "name": {"uk": "TetraMin основний корм пластівці", "ru": "TetraMin основной корм хлопья"},
-        "brand": "Tetra",
-        "description": {
-            "uk": "Основний корм у пластівцях для всіх видів тропічних риб. Збалансована формула з вітамінами.",
-            "ru": "Основной корм в хлопьях для всех видов тропических рыб. Сбалансированная формула с витаминами.",
-        },
-        "animals": ["fish"],
-        "categories": ["food", "dry-food"],
-        "attributes": [
-            {"key": {"uk": "Об'єм", "ru": "Объём"}, "value": {"uk": "250 мл", "ru": "250 мл"}, "is_main": True},
-            {"key": {"uk": "Тип", "ru": "Тип"}, "value": {"uk": "Пластівці", "ru": "Хлопья"}, "is_main": True},
-        ],
-    },
-    {
-        "slug": "vitakraft-kracker-rodents",
-        "name": {"uk": "Vitakraft Kräcker для гризунів", "ru": "Vitakraft Kräcker для грызунов"},
-        "brand": "Vitakraft",
-        "description": {
-            "uk": "Крекер-ласощі з медом та зерновими для хом'яків та морських свинок.",
-            "ru": "Крекер-лакомство с мёдом и зерновыми для хомяков и морских свинок.",
-        },
-        "animals": ["rodents"],
-        "categories": ["food", "treats"],
-        "attributes": [
-            {"key": {"uk": "Вага", "ru": "Вес"}, "value": {"uk": "112 г", "ru": "112 г"}, "is_main": True},
-            {"key": {"uk": "Смак", "ru": "Вкус"}, "value": {"uk": "Мед", "ru": "Мёд"}, "is_main": True},
-        ],
-    },
-    {
-        "slug": "trixie-bird-cage-natura",
-        "name": {"uk": "Trixie Natura клітка для птахів", "ru": "Trixie Natura клетка для птиц"},
-        "brand": "Trixie",
-        "description": {
-            "uk": "Простора клітка з натурального дерева для канарок та хвилястих папуг.",
-            "ru": "Просторная клетка из натурального дерева для канареек и волнистых попугаев.",
-        },
-        "animals": ["birds"],
-        "categories": ["housing", "cages"],
-        "attributes": [
-            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "60×40×80 см", "ru": "60×40×80 см"}, "is_main": True},
-            {"key": {"uk": "Матеріал", "ru": "Материал"}, "value": {"uk": "Дерево/метал", "ru": "Дерево/металл"}, "is_main": True},
-        ],
-    },
-    {
-        "slug": "exo-terra-terrarium-mini",
-        "name": {"uk": "Exo Terra тераріум Mini", "ru": "Exo Terra террариум Mini"},
-        "brand": "Exo Terra",
-        "description": {
-            "uk": "Компактний скляний тераріум для невеликих рептилій та амфібій. Передні дверцята для зручного доступу.",
-            "ru": "Компактный стеклянный террариум для небольших рептилий и амфибий. Передняя дверца для удобного доступа.",
-        },
-        "animals": ["reptiles"],
-        "categories": ["housing", "aquariums"],
-        "attributes": [
-            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "30×30×30 см", "ru": "30×30×30 см"}, "is_main": True},
-            {"key": {"uk": "Матеріал", "ru": "Материал"}, "value": {"uk": "Скло", "ru": "Стекло"}, "is_main": True},
-        ],
-    },
-    {
-        "slug": "flexi-new-classic-leash",
-        "name": {"uk": "Flexi New Classic повідок-рулетка", "ru": "Flexi New Classic поводок-рулетка"},
-        "brand": "Flexi",
-        "description": {
-            "uk": "Рулетка з тросовим повідком довжиною 5 м. Надійний гальмівний механізм.",
-            "ru": "Рулетка с тросовым поводком длиной 5 м. Надёжный тормозной механизм.",
-        },
-        "animals": ["dogs"],
-        "categories": ["accessories", "leashes"],
-        "attributes": [
-            {"key": {"uk": "Довжина", "ru": "Длина"}, "value": {"uk": "5 м", "ru": "5 м"}, "is_main": True},
-            {"key": {"uk": "Макс. вага собаки", "ru": "Макс. вес собаки"}, "value": {"uk": "20 кг", "ru": "20 кг"}, "is_main": True},
-        ],
-    },
-    {
-        "slug": "8in1-excel-vitamins-adult",
-        "name": {"uk": "8in1 Excel мультивітаміни", "ru": "8in1 Excel мультивитамины"},
-        "brand": "8in1",
-        "description": {
-            "uk": "Мультивітамінна добавка для дорослих собак. Містить вітаміни групи B, антиоксиданти та мінерали.",
-            "ru": "Мультивитаминная добавка для взрослых собак. Содержит витамины группы B, антиоксиданты и минералы.",
-        },
-        "animals": ["dogs"],
-        "categories": ["health", "vitamins"],
-        "attributes": [
-            {"key": {"uk": "Кількість", "ru": "Количество"}, "value": {"uk": "70 таблеток", "ru": "70 таблеток"}, "is_main": True},
-            {"key": {"uk": "Вік", "ru": "Возраст"}, "value": {"uk": "Дорослі", "ru": "Взрослые"}, "is_main": True},
-        ],
-    },
-    {
-        "slug": "furminator-deshedding-cat",
-        "name": {"uk": "FURminator дешеддер для котів", "ru": "FURminator дешеддер для кошек"},
-        "brand": "FURminator",
-        "description": {
-            "uk": "Інструмент для видалення підшерстя у короткошерстих котів. Зменшує линяння до 90%.",
-            "ru": "Инструмент для удаления подшёрстка у короткошёрстных кошек. Снижает линьку до 90%.",
-        },
-        "animals": ["cats"],
-        "categories": ["health", "grooming"],
-        "attributes": [
-            {"key": {"uk": "Тип шерсті", "ru": "Тип шерсти"}, "value": {"uk": "Коротка", "ru": "Короткая"}, "is_main": True},
-            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "S", "ru": "S"}, "is_main": True},
-        ],
-    },
-    {
-        "slug": "trixie-cat-bed-minou",
-        "name": {"uk": "Trixie Minou лежанка", "ru": "Trixie Minou лежанка"},
-        "brand": "Trixie",
-        "description": {
-            "uk": "М'яка плюшева лежанка для котів та маленьких собак. Бортики та подушка для максимального комфорту.",
-            "ru": "Мягкая плюшевая лежанка для кошек и маленьких собак. Бортики и подушка для максимального комфорта.",
-        },
-        "animals": ["cats", "dogs"],
-        "categories": ["housing", "beds"],
-        "attributes": [
-            {"key": {"uk": "Розмір", "ru": "Размер"}, "value": {"uk": "50×40 см", "ru": "50×40 см"}, "is_main": True},
-            {"key": {"uk": "Матеріал", "ru": "Материал"}, "value": {"uk": "Плюш", "ru": "Плюш"}, "is_main": True},
-            {"key": {"uk": "Колір", "ru": "Цвет"}, "value": {"uk": "Бежевий", "ru": "Бежевый"}, "is_main": False},
-        ],
-    },
-]
-
-
 def seed_products(db: Session) -> None:
-    from app.models.product import ProductAttribute
-
     for data in PRODUCTS:
-        existing = db.query(Product).filter(Product.slug == data["slug"]).first()
-        if existing:
-            existing.name = data["name"]
-            existing.description = data["description"]
-            for old_attr in existing.attributes:
-                db.delete(old_attr)
-            db.flush()
-            for attr in data.get("attributes", []):
-                db.add(ProductAttribute(
-                    id=uuid.uuid4(),
-                    product_id=existing.id,
-                    key=attr["key"],
-                    value=attr["value"],
-                    is_main=attr.get("is_main", False),
-                ))
-            continue
-
         product = Product(
             id=uuid.uuid4(),
             slug=data["slug"],
@@ -347,16 +515,24 @@ def seed_products(db: Session) -> None:
 
         animal_slugs = data.get("animals", [])
         if animal_slugs:
-            animals = db.query(Animal).filter(Animal.slug.in_(animal_slugs)).all()
-            product.animals = animals
+            product.animals = db.query(Animal).filter(Animal.slug.in_(animal_slugs)).all()
 
         category_slugs = data.get("categories", [])
         if category_slugs:
-            categories = db.query(Category).filter(Category.slug.in_(category_slugs)).all()
-            product.categories = categories
+            product.categories = db.query(Category).filter(Category.slug.in_(category_slugs)).all()
 
         db.add(product)
         db.flush()
+
+        for img in data.get("images", []):
+            db.add(ProductImage(
+                id=uuid.uuid4(),
+                product_id=product.id,
+                url=img["url"],
+                order=img["order"],
+                is_main=img["is_main"],
+                media_type="image",
+            ))
 
         for attr in data.get("attributes", []):
             db.add(ProductAttribute(
@@ -376,6 +552,7 @@ def run_seeds() -> None:
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
+        clear_data(db)
         seed_animals(db)
         seed_categories(db)
         seed_admin(db)

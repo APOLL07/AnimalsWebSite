@@ -42,6 +42,7 @@ services:
     volumes:
       - ./docker/nginx/nginx.dev.conf:/etc/nginx/conf.d/default.conf:ro
       - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./images:/usr/share/nginx/product-images:ro
     ports:
       - "80:80"
     depends_on:

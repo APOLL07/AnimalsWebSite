@@ -11,7 +11,7 @@ from app.config import settings
 
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime"}
-MAX_VIDEO_SIZE = 50 * 1024 * 1024  # 50MB
+MAX_VIDEO_SIZE = 500 * 1024 * 1024  # 500MB
 SIZES = {
     "thumb": (200, 200),
     "medium": (600, 600),
@@ -37,7 +37,7 @@ async def save_upload(file: UploadFile) -> dict[str, str]:
     if len(data) > settings.MAX_IMAGE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Файл слишком большой (макс. 5 МБ)",
+            detail="Файл слишком большой (макс. 100 МБ)",
         )
 
     base_dir = _ensure_dirs()
@@ -72,7 +72,7 @@ async def save_video_upload(file: UploadFile) -> str:
     if len(data) > MAX_VIDEO_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Видео слишком большое (макс. 50 МБ)",
+            detail="Видео слишком большое (макс. 500 МБ)",
         )
 
     base_dir = Path(settings.UPLOAD_DIR)
