@@ -52,3 +52,12 @@ images/
 
 # Playwright MCP screenshots
 .playwright-mcp/
+
+# Database dumps and scripts
+*.sql
+dump_database.py
+dump_all_tables.sh
+full_backup.sql
+generate_sql_dump.py
+script.py
+scriptForImages.py
