@@ -30,12 +30,12 @@ from app.services.slug import generate_slug
 
 
 def _make_slug(name) -> str:
-    """Simple slug from name (transliterate Russian)."""
-    from app.services.slug import _transliterate
+    """Translate animal/category name to English slug."""
+    from app.services.slug import translate_animal_name
 
     if isinstance(name, dict):
         name = name.get("ru") or name.get("uk") or ""
-    base = _transliterate(name)
+    base = translate_animal_name(name)
     return re.sub(r"[^a-z0-9]+", "-", base).strip("-")
 
 router = APIRouter()
